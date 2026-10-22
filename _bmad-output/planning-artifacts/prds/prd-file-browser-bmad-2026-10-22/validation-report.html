@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>PRD Validation: דפדפן תיקיות מקומי</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e7e5e4;
+    --text: #1c1917;
+    --muted: #78716c;
+
+    --verdict-strong: #16a34a;
+    --verdict-adequate: #65a30d;
+    --verdict-thin: #d97706;
+    --verdict-broken: #dc2626;
+
+    --sev-low: #64748b;
+    --sev-medium: #ca8a04;
+    --sev-high: #ea580c;
+    --sev-critical: #dc2626;
+
+    --grade-exc: #16a34a;
+    --grade-good: #65a30d;
+    --grade-fair: #d97706;
+    --grade-poor: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  header.report-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .title h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .title .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .grade {
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    color: white;
+    font-size: 15px;
+    white-space: nowrap;
+  }
+  .grade-excellent { background: var(--grade-exc); }
+  .grade-good { background: var(--grade-good); }
+  .grade-fair { background: var(--grade-fair); }
+  .grade-poor { background: var(--grade-poor); }
+
+  .synthesis {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-inline-start: 3px solid var(--muted);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 24px;
+    font-size: 15.5px;
+  }
+  .synthesis p { margin: 0 0 10px; }
+  .synthesis p:last-child { margin-bottom: 0; }
+
+  .dimension-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .dim-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .dim-card .dim-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .dim-card .dim-verdict { font-size: 14px; font-weight: 600; }
+
+  section.dimension, section.reviewer-section { margin-bottom: 14px; }
+  section.dimension details, section.reviewer-section details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  section summary {
+    padding: 14px 20px;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  section summary::-webkit-details-marker { display: none; }
+  section summary::before {
+    content: "▸";
+    display: inline-block;
+    color: var(--muted);
+    transition: transform 0.15s ease;
+  }
+  section details[open] summary::before { transform: rotate(90deg); }
+  section summary h2 {
+    display: inline;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    flex: 1;
+  }
+  .verdict-pill {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: white;
+  }
+  .verdict-strong { background: var(--verdict-strong); }
+  .verdict-adequate { background: var(--verdict-adequate); }
+  .verdict-thin { background: var(--verdict-thin); }
+  .verdict-broken { background: var(--verdict-broken); }
+
+  .dim-body { padding: 4px 20px 18px; }
+  .dim-judgment { color: var(--text); font-size: 14.5px; }
+  .dim-judgment p { margin: 0 0 10px; }
+
+  .findings-list { padding: 0 20px 4px; }
+  article.finding {
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+  }
+  article.finding:first-child { border-top: none; }
+  article.finding header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .badge {
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+  }
+  .badge-sev-low { background: rgba(100, 116, 139, 0.12); color: var(--sev-low); }
+  .badge-sev-medium { background: rgba(202, 138, 4, 0.14); color: var(--sev-medium); }
+  .badge-sev-high { background: rgba(234, 88, 12, 0.14); color: var(--sev-high); }
+  .badge-sev-critical { background: rgba(220, 38, 38, 0.14); color: var(--sev-critical); }
+  .finding-title { margin: 0; font-size: 15px; font-weight: 500; flex: 1; min-width: 200px; }
+  .finding-location { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--muted); }
+  .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; }
+  .finding-fix strong { color: var(--muted); font-weight: 500; }
+
+  .reviewer-source {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  .mechanical {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 24px;
+    font-size: 14px;
+  }
+  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mechanical ul { margin: 0; padding-inline-start: 20px; }
+  .mechanical li { margin-bottom: 4px; color: var(--text); }
+
+  footer.report-footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  footer .meta { display: flex; gap: 24px; flex-wrap: wrap; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: .9em; background: rgba(0,0,0,.05); padding: 0 4px; border-radius: 3px; unicode-bidi: isolate; }
+  .finding-location, .subtitle { direction: ltr; unicode-bidi: isolate; }
+  section summary::before { content: "◂"; }
+  section details[open] summary::before { transform: rotate(-90deg); }
+</style></head><body><div class="container">
+<header class="report-header"><div class="title"><h1>דפדפן תיקיות מקומי: דוח Validation</h1><div class="subtitle">_bmad-output/planning-artifacts/prds/prd-file-browser-bmad-2026-10-22/prd.md</div></div><div class="grade grade-fair">Fair</div></header>
+<div class="synthesis"><p>ה-PRD קטן, ממוקד ומוכן לבנייה. התזה (&quot;המוצר קטן בכוונה&quot;, §1) מחזיקה, המדדים מאמתים אותה, ויש גם מדד נגדי אמיתי (SM-C1). רוב ה-FR כוללים בדיקות קונקרטיות עם קלט ופלט (<code>b</code>, <code>A</code>, <code>c</code> ← <code>A</code>, <code>b</code>, <code>c</code>; ‏999,999 בתים ← <code>1 MB</code>). לפי ה-rubric לבדו כל הממדים strong או adequate, ואין ממצאים בחומרה critical או high.</p><p>הבודק האדברסרי מוריד את הציון ל-Fair. הוא מצא 7 ממצאים בחומרה high ולא מצא אף critical. הם מתרכזים בשלושה אזורים: (1) מצבים אסינכרוניים שלא הוגדרו בכלל: מצב טעינה, תשובות ישנות שדורסות את הבחירה, והחלפת שורש באמצע קריאה. (2) FR-5: סתירה בין &quot;לחיצה על תיקייה בוחרת אותה&quot; לבין &quot;אי אפשר לבחור פריט לא קריא&quot;, ותיאור כפול ב-addendum של כישלון באמצע מנייה. (3) כללי פורמט: תאריך &quot;מקומי&quot; שמתנגש ב-NFR-6, וכללי סוג, גודל ומיון שלא מכסים מקרי קצה. אף ממצא לא דורש להרחיב את ההיקף. כולם נסגרים בשורה או שתיים ב-FR הרלוונטי, ועדיף לסגור אותם לפני הארכיטקטורה.</p></div>
+<div class="dimension-summary">
+<div class="dim-card"><div class="dim-name">Decision-readiness</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div>
+<div class="dim-card"><div class="dim-name">Substance over theater</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div>
+<div class="dim-card"><div class="dim-name">Strategic coherence</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div>
+<div class="dim-card"><div class="dim-name">Done-ness clarity</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div></div>
+<div class="dim-card"><div class="dim-name">Scope honesty</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div></div>
+<div class="dim-card"><div class="dim-name">Downstream usability</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div>
+<div class="dim-card"><div class="dim-name">Shape fit</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div>
+</div>
+<section class="dimension"><details><summary><h2>Decision-readiness</h2><span class="verdict-pill verdict-strong">strong</span></summary><div class="dim-body"><div class="dim-judgment"><p>ההחלטות כתובות כהחלטות ולא כ&quot;שיקולים&quot;: &quot;לחיצה על תיקייה בוחרת אותה וגם פותחת או סוגרת אותה&quot; (FR-3), &quot;אי אפשר לבחור פריט לא קריא&quot; (FR-5), יחידות &quot;כמו ב-Finder&quot; (FR-7). בסעיף השאלות הפתוחות כתוב &quot;אין&quot;, וה-memlog מאשר את זה. יש trade-off אחד שנבחר בלי שנאמר במפורש: המטמון לכל בחירת שורש.</p></div></div><div class="findings-list"><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">המחיר של המטמון לא נאמר</h3><span class="finding-location">FR-3, §6</span></header><div class="finding-note">שינויים בדיסק לא יופיעו עד שבוחרים את השורש מחדש. אין רענון, וגם ב&quot;בחוץ (V1)&quot; הוא לא מופיע. אם קובץ ישתנה בזמן SM-1, Ita עלולה לחשוב שזה באג.</div><div class="finding-fix"><strong>תיקון:</strong> להוסיף ל-FR-3 &quot;שינויים בדיסק אחרי הקריאה לא מוצגים עד בחירה מחדש של השורש&quot;, ולהוסיף &quot;רענון&quot; ל&quot;בחוץ (V1)&quot;.</div></article></div></details></section>
+<section class="dimension"><details><summary><h2>Substance over theater</h2><span class="verdict-pill verdict-strong">strong</span></summary><div class="dim-body"><div class="dim-judgment"><p>אין כאן רהיטים. החזון מתאר את המוצר הזה דווקא, יש UJ אחד והוא מכסה את שלוש דרישות ה-EARS, וכל NFR ניתן לבדיקה.</p></div></div><div class="findings-list"></div></details></section>
+<section class="dimension"><details><summary><h2>Strategic coherence</h2><span class="verdict-pill verdict-strong">strong</span></summary><div class="dim-body"><div class="dim-judgment"><p>התזה מפורשת: מה שנבדק הוא תהליך BMAD. ‏SM-1 עד SM-3 נגזרים ממנה, ו-SM-C1 מגן עליה. ההיקף הוא MVP עקבי.</p></div></div><div class="findings-list"></div></details></section>
+<section class="dimension"><details><summary><h2>Done-ness clarity</h2><span class="verdict-pill verdict-adequate">adequate</span></summary><div class="dim-body"><div class="dim-judgment"><p>זה החלק החזק ביותר במסמך, ובו גם רוב הפערים. FR-4, FR-6 ו-FR-7 מגיעים לרמת דוגמאות שאפשר להפוך ישירות לטסטים. ובכל זאת, כמה מצבים שמהנדס ייתקל בהם כבר ביום הראשון לא הוגדרו.</p></div></div><div class="findings-list"><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">המצב ההתחלתי של השורש לא מוגדר</h3><span class="finding-location">FR-1, FR-3, UJ-1, FR-6</span></header><div class="finding-note">לא כתוב אם השורש נפתח מיד, אם אפשר לבחור אותו ואם אפשר לסגור אותו. ב-FR-6 כתוב &quot;פותחים תיקייה ולא לוחצים&quot;, וזה דו-משמעי.</div><div class="finding-fix"><strong>תיקון:</strong> להוסיף ל-FR-1 &quot;אחרי הבחירה השורש מוצג פתוח, ותוכנו נקרא מיד&quot;, ולקבוע איך מתנהגת לחיצה על השורש.</div></article><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">סתירה בין FR-3 ל-FR-5 כשתיקייה נכשלת בפתיחה</h3><span class="finding-location">FR-3, FR-5</span></header><div class="finding-note">לחיצה על תיקייה בוחרת אותה, אבל &quot;אי אפשר לבחור פריט לא קריא&quot;. לא מוגדר מה יש בחלונית ומה קורה בלחיצה שנייה.</div><div class="finding-fix"><strong>תיקון:</strong> לכתוב כלל מפורש. למשל: הבחירה מתבטלת, החלונית חוזרת למצב ריק, ולחיצות נוספות לא עושות כלום.</div></article><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">הסוג של dotfiles ושל שמות עם כמה נקודות</h3><span class="finding-location">FR-7, FR-4</span></header><div class="finding-note">לא מוגדר מה יקבלו <code>.gitignore</code>, <code>archive.tar.gz</code> ו-<code>file.</code>.</div><div class="finding-fix"><strong>תיקון:</strong> להוסיף דוגמאות: <code>.gitignore</code> ← <code>—</code>, ‏<code>archive.tar.gz</code> ← <code>GZ</code>, ‏<code>README</code> ← <code>—</code>.</div></article><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">תיקייה ריקה ומצב טעינה</h3><span class="finding-location">FR-3</span></header><div class="finding-note">לא כתוב מה מוצג בזמן קריאה ומה מוצג בתיקייה בלי ילדים.</div><div class="finding-fix"><strong>תיקון:</strong> שורה אחת לכל מקרה, או להעביר את ההחלטה במפורש ל-UX.</div></article><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">כלל העיגול לא מוגדר</h3><span class="finding-location">FR-7</span></header><div class="finding-note">לא ברור אם 1,050 בתים יוצגו כ-<code>1.1 KB</code> או כ-<code>1 KB</code>.</div><div class="finding-fix"><strong>תיקון:</strong> &quot;עיגול חצי כלפי מעלה&quot;, ולהוסיף בדיקות ל-1,050 ול-1,049.</div></article><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">ל-FR-8 אין בלוק בדיקה</h3><span class="finding-location">FR-8</span></header><div class="finding-note">זה ה-FR היחיד בלי &quot;תוצאות&quot; ובלי &quot;בדיקה&quot;, אף ש-NFR-5 מחייב טסט לכל FR.</div><div class="finding-fix"><strong>תיקון:</strong> להוסיף: לוחצים על תיקייה ← מוצגים רק השם ו-<code>Folder</code>.</div></article><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">שיטת ההשוואה במיון</h3><span class="finding-location">FR-4</span></header><div class="finding-note">לא מוגדר איך ממוינים <code>file2</code> ו-<code>file10</code>, שמות בעברית, ו-<code>a</code> מול <code>A</code>.</div><div class="finding-fix"><strong>תיקון:</strong> לקבוע comparator ולהוסיף טסט.</div></article></div></details></section>
+<section class="dimension"><details><summary><h2>Scope honesty</h2><span class="verdict-pill verdict-adequate">adequate</span></summary><div class="dim-body"><div class="dim-judgment"><p>‏§5 ו-§6 עושים את העבודה, ו&quot;הגרסה הבאה&quot; מוגדרת. במסמך לא נשארו תגיות <code>[ASSUMPTION]</code>, וכל הסטיות מה-brief מתועדות ב-memlog. חסרות כמה השמטות שהקורא צריך להסיק בעצמו.</p></div></div><div class="findings-list"><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">אין התייחסות לנגישות ולמקלדת</h3><span class="finding-location">§5, §6</span></header><div class="finding-note">UX או מהנדס עלולים להניח שצריך ניווט בחיצים ולהוסיף עבודה שלא תוכננה.</div><div class="finding-fix"><strong>תיקון:</strong> להוסיף ל&quot;בחוץ (V1)&quot;: ניווט מקלדת ו-ARIA מעבר לברירת המחדל.</div></article><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">פורמט התאריך המקומי מול NFR-6</h3><span class="finding-location">FR-7, NFR-6</span></header><div class="finding-note">&quot;בפורמט המקומי של הדפדפן&quot; ייתן תאריך בעברית בממשק שאמור להיות באנגלית, וגם יוצר טסטים שתלויים ב-locale.</div><div class="finding-fix"><strong>תיקון:</strong> לקבע locale, או להצהיר על חריגה מ-NFR-6. בכל מקרה לקבע את ה-locale בטסטים.</div></article></div></details></section>
+<section class="dimension"><details><summary><h2>Downstream usability</h2><span class="verdict-pill verdict-strong">strong</span></summary><div class="dim-body"><div class="dim-judgment"><p>המילון קצר ומשמש בעקביות. המספור רציף וההפניות בין הסעיפים תקינות. ה-addendum ממפה את מקרי הכישלון של FR-5 לקריאות API, וזה בדיוק מה שהארכיטקטורה צריכה.</p></div></div><div class="findings-list"></div></details></section>
+<section class="dimension"><details><summary><h2>Shape fit</h2><span class="verdict-pill verdict-strong">strong</span></summary><div class="dim-body"><div class="dim-judgment"><p>כלי למפעילה אחת בתרגיל קורס, וה-PRD בנוי כמפרט יכולות עם UJ אחד, בלי פרסונות מיותרות. האורך תואם את היעד של 2–3 עמודים.</p></div></div><div class="findings-list"></div></details></section>
+<section class="reviewer-section"><details><summary><h2>סקירה אדברסרית</h2><span class="reviewer-source">review-adversarial-general.md</span></summary><div class="dim-body"><div class="dim-judgment"><p>פסק הדין: אפשר להמשיך לארכיטקטורה רק אחרי תיקונים. אין ממצא קריטי. ה-PRD קצר וברור, אבל המצבים האסינכרוניים, הסתירות ב-FR-5 וכללי הפורמט ייצרו באגים או טסטים סותרים אם לא ייסגרו. ספירה: critical 0, ‏high 7, ‏medium 10, ‏low 8.</p></div></div><div class="findings-list"><article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">H-1. אין מצב טעינה ואין טיפול במרוצים</h3><span class="finding-location">FR-3, FR-7, FR-1</span></header><div class="finding-note">‏<code>values()</code> ו-<code>getFile()</code> אסינכרוניים. לא מוגדר מה מוצג בזמן טעינה. תשובה של קובץ A שחוזרת אחרי B תדרוס את החלונית, ותוצאות מהשורש הקודם יכולות להיכנס לעץ החדש.</div><div class="finding-fix"><strong>תיקון:</strong> FR קצר: תוצאה אסינכרונית מוחלת רק אם הפריט או השורש עדיין רלוונטיים, אחרת היא נזרקת. להגדיר מצב <code>Loading…</code> מינימלי, ולכתוב טסטים עם promises שנפתרים בסדר הפוך.</div></article><article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">H-2. התנהגות תיקיית השורש</h3><span class="finding-location">UJ-1, FR-1, FR-3, FR-5, FR-6</span></header><div class="finding-note">לא מוגדר אם השורש נפתח אוטומטית, אם אפשר לבחור או לסגור אותו, ומה מוצג כשהשורש עצמו לא קריא או ריק. בבדיקה של FR-6 &quot;פותחים תיקייה ולא לוחצים&quot; יש סתירה פנימית, כי פתיחה בעץ היא לחיצה שגם בוחרת.</div><div class="finding-fix"><strong>תיקון:</strong> &quot;אחרי בחירה השורש מוצג כשורה, פתוח ולא נבחר&quot;. לנסח את בדיקת FR-6 כ&quot;בוחרים בבורר ולא לוחצים בעץ&quot;, להחיל את FR-5 על השורש, ולהגדיר מה מציגה תיקייה ריקה.</div></article><article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">H-3. תיקייה שנכשלה בפתיחה: נבחרת או לא</h3><span class="finding-location">FR-3, FR-5, §3</span></header><div class="finding-note">הבחירה קורית לפני שהכישלון מתגלה. החזרה למצב ריק מוגדרת רק לקובץ. המילון (&quot;הפריט האחרון שלחצה עליו&quot;) סותר את &quot;אי אפשר לבחור&quot;.</div><div class="finding-fix"><strong>תיקון:</strong> כלל אחד לכל הסוגים: לחיצה על פריט לא קריא מנקה את הבחירה. לעדכן את המילון ל&quot;האחרון שנלחץ ונקרא בהצלחה&quot;.</div></article><article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">H-4. ה-addendum מתאר כישלון באמצע מנייה בשתי דרכים שונות</h3><span class="finding-location">addendum, FR-5</span></header><div class="finding-note">&quot;נכשל באמצע&quot; מופיע גם כהודעה ליד התיקייה וגם כשורה בלי שם. גם המיקום של שורת ההודעה בסדר המיון לא מוגדר.</div><div class="finding-fix"><strong>תיקון:</strong> לפצל לפי רגע הכישלון. לפני הפריט הראשון: הודעה ליד התיקייה. אחרי פריט אחד או יותר: הפריטים שהתקבלו, ובסוף הרשימה שורה בלי שם. שני טסטים נפרדים.</div></article><article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">H-5. הבדיקה הידנית של FR-5 עלולה לא להפעיל כישלון בקבצים</h3><span class="finding-location">FR-5, addendum</span></header><div class="finding-note">האפליקציה צריכה רק size ו-lastModified, ונתונים כאלה מגיעים מ-stat. לכן קובץ עם <code>chmod 000</code> עשוי להחזיר <code>getFile()</code> תקין. הבודק כתב שלא אימת את זה ב-Chrome.</div><div class="finding-fix"><strong>תיקון:</strong> לאמת ב-Chrome. אם הקריאה מצליחה, להריץ את הבדיקה הידנית על תיקייה חסומה או על קובץ שנמחק אחרי המנייה, ולכתוב שכל שגיאה מ-<code>getFile()</code> נחשבת &quot;לא קריא&quot;.</div></article><article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">H-6. תאריך מקומי סותר את NFR-6 ולא ניתן לבדיקה דטרמיניסטית</h3><span class="finding-location">FR-7, NFR-6, NFR-5</span></header><div class="finding-note">בדפדפן בעברית יוצג תאריך בעברית. הטסט תלוי ב-TZ וב-locale. לא מוגדרים 12 או 24 שעות, ולא מה מוצג כש-<code>lastModified</code> חסר.</div><div class="finding-fix"><strong>תיקון:</strong> לקבע <code>Intl.DateTimeFormat</code> עם locale באנגלית, לקבע TZ בטסטים, ולכתוב דוגמה מפורשת.</div></article><article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">H-7. כל לחיצה על תיקייה גם פותחת או סוגרת אותה</h3><span class="finding-location">FR-3, §3</span></header><div class="finding-note">אי אפשר לבחור תיקייה פתוחה בלי לסגור אותה, ואי אפשר לבחור תיקייה סגורה בלי לפתוח אותה. אין גם חלופה במקלדת. ה-UX ייאלץ להחליט על זה בעצמו.</div><div class="finding-fix"><strong>תיקון:</strong> לאשר את ההתנהגות במפורש ולכתוב טסט, או לפצל: לחיצה על החץ פותחת וסוגרת, לחיצה על השם בוחרת.</div></article><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">M-1. סוג: dotfiles, סיומות כפולות, נקודה בסוף</h3><span class="finding-location">FR-7</span></header><div class="finding-note">לא מוגדר מה יקבלו <code>.gitignore</code>, <code>a.tar.gz</code>, <code>file.</code> ו-<code>.env.local</code>.</div><div class="finding-fix"><strong>תיקון:</strong> הסיומת היא מה שאחרי הנקודה האחרונה, אלא אם הנקודה היא התו הראשון או האחרון. להוסיף טבלת דוגמאות.</div></article><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">M-2. אופן העיגול ושגיאות נקודה צפה</h3><span class="finding-location">FR-7</span></header><div class="finding-note">‏<code>(1450/1000).toFixed(1)</code> מחזיר <code>1.4</code>.</div><div class="finding-fix"><strong>תיקון:</strong> עיגול half-up בחשבון שלמים. להוסיף בדיקות ל-1,450, ל-1,449, ל-999,950 ול-999,949.</div></article><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">M-3. ‏0 בתים ומעל 1000 GB</h3><span class="finding-location">FR-7</span></header><div class="finding-note">לא מוגדר מה מוצג ל-0 בתים. כלל המעבר נתקע ב-GB ומוביל ל-<code>1000 GB</code>.</div><div class="finding-fix"><strong>תיקון:</strong> &quot;0 ← <code>0 B</code>&quot;. להוסיף TB, או להצהיר שנשארים ב-GB.</div></article><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">M-4. פורמט הגודל לא מוגדר כבלתי תלוי ב-locale</h3><span class="finding-location">FR-7</span></header><div class="finding-note">אם המימוש ישתמש ב-Intl, בחלק מה-locales יופיע פסיק במקום נקודה.</div><div class="finding-fix"><strong>תיקון:</strong> פורמט קבוע: נקודה עשרונית, בלי מפריד אלפים, רווח לפני היחידה.</div></article><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">M-5. המיון לא מוגדר עד הסוף</h3><span class="finding-location">FR-4</span></header><div class="finding-note">לא מוגדרים שבירת שוויון בין <code>readme</code> ל-<code>README</code>, התלות של localeCompare ב-locale, ומיון מספרי.</div><div class="finding-fix"><strong>תיקון:</strong> comparator קבוע עם <code>sensitivity: &#x27;base&#x27;</code>, ‏<code>numeric: true</code> ושבירת שוויון לפי code points.</div></article><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">M-6. בורר התיקיות: רק ביטול מוגדר</h3><span class="finding-location">FR-1</span></header><div class="finding-note">לא מוגדר מה קורה בתיקייה חסומה, ב-<code>SecurityError</code> או כשההרשאה נדחית.</div><div class="finding-fix"><strong>תיקון:</strong> כל כישלון של הבורר מתנהג כמו ביטול. טסט עם mock.</div></article><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">M-7. האם גם כישלון נשמר במטמון</h3><span class="finding-location">FR-3, FR-5</span></header><div class="finding-note">לא ברור אם לחיצה חוזרת אחרי תיקון ההרשאה מנסה לקרוא שוב.</div><div class="finding-fix"><strong>תיקון:</strong> גם כישלון נשמר עד החלפת השורש, ולכתוב טסט.</div></article><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">M-8. ‏NFR-5: חלק מהתוצאות לא ניתנות לאוטומציה</h3><span class="finding-location">NFR-5, FR-1, FR-7</span></header><div class="finding-note">בורר native, &quot;לא מבקש הרשאת כתיבה&quot; ו&quot;צמוד לסרגל&quot; לא נבדקים ב-jsdom.</div><div class="finding-fix"><strong>תיקון:</strong> לנסח כ-spy על <code>showDirectoryPicker({mode:&#x27;read&#x27;})</code> וכבדיקת DOM, ולציין מה מכוסה רק ב-SM-1.</div></article><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">M-9. ‏FR-2 בהקשר לא מאובטח, ו&quot;אין כפתור פעיל&quot;</h3><span class="finding-location">FR-2, NFR-1</span></header><div class="finding-note">גישה דרך IP ברשת המקומית תציג &quot;use Chrome&quot; גם ב-Chrome. &quot;אין כפתור פעיל&quot; מתיר כפתור disabled.</div><div class="finding-fix"><strong>תיקון:</strong> &quot;הכפתור לא מרונדר&quot;. לשקול הודעה נפרדת כש-<code>!isSecureContext</code>.</div></article><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">M-10. טעינה עצלה לא פותרת תיקייה רחבה</h3><span class="finding-location">§4.2</span></header><div class="finding-note">&quot;תיקיות ענקיות לא מאטות&quot; לא נכון לתיקייה עם אלפי ילדים ישירים.</div><div class="finding-fix"><strong>תיקון:</strong> לתקן את הטענה. תיקייה כזו יכולה להיפתח לאט, וזה מקובל ב-V1.</div></article><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">L-1. ‏symlinks לא מוזכרים</h3><span class="finding-location">FR-4</span></header><div class="finding-note">symlink שבור, ולולאה ידנית.</div><div class="finding-fix"><strong>תיקון:</strong> משפט אחד: קישור שבור הוא פריט לא קריא.</div></article><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">L-2. בחירה מחדש של אותה תיקייה</h3><span class="finding-location">FR-1</span></header><div class="finding-note">הנוסח &quot;תיקייה אחרת&quot; לא מכסה בחירה של אותה תיקייה.</div><div class="finding-fix"><strong>תיקון:</strong> כל בחירה מוצלחת מאפסת את העץ, את המטמון ואת הבחירה.</div></article><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">L-3. טקסט המצב הריק אומר &quot;file&quot;</h3><span class="finding-location">FR-6</span></header><div class="finding-note">אפשר לבחור גם תיקייה.</div><div class="finding-fix"><strong>תיקון:</strong> לשנות ל-<code>Select an item to see its details</code>, או להשאיר כהחלטה מודעת.</div></article><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">L-4. סדר השדות בחלונית ו-labels</h3><span class="finding-location">UJ-1, FR-7</span></header><div class="finding-note">ב-UJ-1 ובFR-7 מופיעים שני סדרים שונים, ואין labels.</div><div class="finding-fix"><strong>תיקון:</strong> <code>Name</code>, <code>Type</code>, <code>Size</code>, <code>Modified</code>.</div></article><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">L-5. המילון: &quot;עץ&quot; ו&quot;שורת כישלון&quot;</h3><span class="finding-location">§3</span></header><div class="finding-note">&quot;צאצאים שנטענו&quot; לא תואם לתיקייה סגורה. שורה בלי שם היא לא פריט.</div><div class="finding-fix"><strong>תיקון:</strong> &quot;הצאצאים של תיקיות פתוחות&quot;, ולהוסיף את המונח &quot;שורת כישלון מנייה&quot;.</div></article><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">L-6. ‏SM-3 משמיט את שלב ה-UX</h3><span class="finding-location">§0, SM-3</span></header><div class="finding-note">‏§0 מזכיר UX, ו-SM-3 לא.</div><div class="finding-fix"><strong>תיקון:</strong> להוסיף UX ל-SM-3 או למחוק אותו מ-§0.</div></article><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">L-7. ‏NFR-3 ו-NFR-4 לא נאכפים</h3><span class="finding-location">NFR-3, NFR-4</span></header><div class="finding-note">בלי כלל lint הם נבדקים רק בעין.</div><div class="finding-fix"><strong>תיקון:</strong> לדרוש אכיפה ב-lint (no-restricted-imports, stylelint).</div></article><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">L-8. שמות בעברית ושמות ארוכים</h3><span class="finding-location">NFR-6, FR-7</span></header><div class="finding-note">שם בעברית בממשק LTR יוצג בסדר שגוי, ושם ארוך ישבור את רוחב העץ.</div><div class="finding-fix"><strong>תיקון:</strong> <code>dir=&quot;auto&quot;</code>, ellipsis בעץ, ושם מלא בחלונית.</div></article></div></details></section>
+<div class="mechanical"><h3>הערות מכניות</h3><ul><li>&quot;סרגל&quot; משמש כשם נרדף ל&quot;עץ&quot;. &quot;בורר&quot; ו&quot;תיקיית האב&quot; לא מוגדרים במילון.</li><li>ב-§0 יש חזרה: &quot;דרישות ה-EARS… מנוסחות בתבנית EARS&quot;.</li><li>ל-FR-4 אין משפט דרישה, רק בלוק תוצאות.</li><li>‏FR-5, המקרה השלישי: המיקום של שורת ההודעה בסדר הממוין לא כתוב במפורש.</li><li>אין צורך ב-Assumptions Index, כי במסמך אין תגיות <code>[ASSUMPTION]</code>.</li><li>כל הסטיות מה-brief מתועדות ב-memlog.</li></ul></div>
+<footer class="report-footer"><div class="meta"><span>Rubric: .claude/skills/bmad-prd/assets/prd-validation-checklist.md</span><span>Generated: 2026-10-22T15:18:50+03:00</span></div></footer></div></body></html>
