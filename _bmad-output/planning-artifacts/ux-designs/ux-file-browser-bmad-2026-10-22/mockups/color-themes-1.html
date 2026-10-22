@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>כיווני צבע וצפיפות</title>
+<style>
+/* ---------- page chrome (not part of the options) ---------- */
+:root { color-scheme: light; }
+body { margin: 0; padding: 32px 24px 64px; background: #ececec; color: #222;
+  font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+h1 { font-size: 22px; margin: 0 0 4px; }
+h2 { font-size: 18px; margin: 48px 0 4px; }
+.lede { color: #555; margin: 0 0 8px; max-width: 70ch; }
+.note { font-size: 13px; color: #555; margin: 8px 0 0; max-width: 80ch; }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(520px, 1fr)); gap: 16px; margin-top: 12px; }
+.cap { font-size: 12px; color: #666; margin: 0 0 4px; direction: rtl; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; direction: ltr; justify-content: flex-end; }
+.chip { font: 11px/1.4 ui-monospace, Menlo, monospace; padding: 2px 6px; border-radius: 4px; background: #fff; border: 1px solid #ccc; }
+.chip i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; border: 1px solid #0003; }
+.ratio { font: 11px/1.4 ui-monospace, Menlo, monospace; margin-top: 4px; direction: ltr; text-align: right; color: #444; }
+.bad { color: #a40000; font-weight: 600; } .ok { color: #1b6e1b; font-weight: 600; }
+.legend { font-size: 13px; background: #fff; border: 1px solid #ccc; border-radius: 6px; padding: 8px 12px; margin-top: 12px; max-width: 80ch; }
+.legend code { direction: ltr; unicode-bidi: isolate; }
+
+/* ---------- direction A: ink on paper ---------- */
+.A.light { --bg:#ffffff; --tree:#f7f7f7; --border:#e4e4e4; --text:#1f1f1f; --muted:#6b6b6b;
+  --sel:#dcdcdc; --seltext:#1f1f1f; --icon:#6b6b6b; --bar:#1f1f1f;
+  --btn-bg:#ffffff; --btn-text:#1f1f1f; --btn-border:#c8c8c8; --warn:#8a5a00; }
+.A.dark  { --bg:#222222; --tree:#1c1c1c; --border:#333333; --text:#e8e8e8; --muted:#9a9a9a;
+  --sel:#3d3d3d; --seltext:#e8e8e8; --icon:#9a9a9a; --bar:#e8e8e8;
+  --btn-bg:#2c2c2c; --btn-text:#e8e8e8; --btn-border:#4a4a4a; --warn:#d9a54a; }
+
+/* ---------- direction B: gray + one accent ---------- */
+.B.light { --bg:#ffffff; --tree:#f6f7f8; --border:#e3e5e8; --text:#1d2025; --muted:#646b75;
+  --sel:#d7e3f1; --seltext:#1d2025; --icon:#646b75; --bar:#3b6ea8;
+  --btn-bg:#3b6ea8; --btn-text:#ffffff; --btn-border:#3b6ea8; --warn:#8a5a00; }
+.B.dark  { --bg:#212328; --tree:#1b1d21; --border:#33363c; --text:#e6e8eb; --muted:#9aa1ab;
+  --sel:#2b3a4d; --seltext:#e6e8eb; --icon:#9aa1ab; --bar:#7aa7d9;
+  --btn-bg:#7aa7d9; --btn-text:#13161a; --btn-border:#7aa7d9; --warn:#d9a54a; }
+
+/* ---------- direction C: full system ---------- */
+.C.light { --bg:#ffffff; --tree:#f2f2f4; --border:#dcdce0; --text:#1d1d1f; --muted:#6e6e73;
+  --sel:#0a64d6; --seltext:#ffffff; --icon:#3d8fe0; --bar:transparent;
+  --btn-bg:#0a64d6; --btn-text:#ffffff; --btn-border:#0a64d6; --warn:#8a5a00; }
+.C.dark  { --bg:#262628; --tree:#1e1e20; --border:#38383a; --text:#f2f2f7; --muted:#98989d;
+  --sel:#0a5bc4; --seltext:#ffffff; --icon:#5aa7ee; --bar:transparent;
+  --btn-bg:#0a5bc4; --btn-text:#ffffff; --btn-border:#0a5bc4; --warn:#d9a54a; }
+
+/* ---------- the mock app ---------- */
+.app { direction: ltr; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+  background: var(--bg); color: var(--text); font: 13px/1.3 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--bg); }
+.btn { font: inherit; padding: 4px 10px; border-radius: 5px; background: var(--btn-bg); color: var(--btn-text); border: 1px solid var(--btn-border); }
+.bar .path { color: var(--muted); font-size: 12px; }
+.body { display: grid; grid-template-columns: 300px 1fr; min-height: 260px; }
+.tree { background: var(--tree); border-right: 1px solid var(--border); padding: 6px 0; }
+.row { display: flex; align-items: center; gap: 4px; height: var(--row-h); padding-left: calc(8px + var(--lvl, 0) * var(--indent)); padding-right: 8px; white-space: nowrap; }
+.compact { --row-h: 22px; --indent: 16px; }
+.regular { --row-h: 28px; --indent: 20px; }
+.row .chev { width: 14px; height: 14px; flex: none; color: var(--muted); }
+.row .chev.none { visibility: hidden; }
+.row .ic { width: 14px; height: 14px; flex: none; color: var(--icon); }
+.row .name { overflow: hidden; text-overflow: ellipsis; min-width: 0; unicode-bidi: plaintext; }
+.row .msg { flex: none; font-size: 12px; margin-left: 6px; }
+.row.sel { background: var(--sel); color: var(--seltext); }
+.row.sel .ic, .row.sel .chev { color: inherit; }
+.withbar .row.sel { box-shadow: inset 3px 0 0 var(--bar); }
+.status { color: var(--muted); font-style: italic; font-size: 12px; }
+.unread-gray .msg { color: var(--muted); }
+.unread-tint .msg { color: var(--warn); }
+.unread-tint .msg::before { content: "⚠ "; }
+.details { padding: 16px 20px; }
+.details dl { display: grid; grid-template-columns: 80px 1fr; gap: 8px 12px; margin: 0; }
+.details dt { color: var(--muted); }
+.details dd { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; unicode-bidi: plaintext; }
+.empty { color: var(--muted); height: 100%; display: grid; place-items: center; }
+svg.sprite { display: none; }
+</style>
+</head>
+<body>
+<svg class="sprite" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="chev-r" viewBox="0 0 16 16"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="chev-d" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="folder" viewBox="0 0 16 16"><path d="M1.5 4.5a1 1 0 0 1 1-1h3.6l1.4 1.5h6a1 1 0 0 1 1 1v6.5a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z" fill="currentColor" fill-opacity=".25" stroke="currentColor" stroke-width="1.1"/></symbol>
+  <symbol id="file" viewBox="0 0 16 16"><path d="M4 1.5h5l3 3v10H4z M9 1.5v3h3" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></symbol>
+</svg>
+
+<h1>כיווני צבע וצפיפות: דף השוואה</h1>
+<p class="lede">אותו עץ מוצג בכל כיוון, בבהיר ובכהה. הפריט הנבחר הוא <code dir="auto">דוח סופי (2).pdf</code>, שמראה גם איך שם בעברית מוצג עם <code>dir="auto"</code>. יש בעץ שתי שורות שלא נקראו. בשורה של <code>private-notes</code> ההודעה באפור, ובשורה של <code>archive-2025</code> היא מקבלת גוון משלה (ענבר, בלי אדום). הטקסט על הכפתור (<code>Choose folder</code>) הוא זמני, וננסח אותו בשלב ה-microcopy.</p>
+<p class="note">מתחת לכל מוקאפ מופיעים יחסי הניגודיות שנמדדו (WCAG). הסף של Amelia הוא <b>3:1 בין הרקע של הפריט הנבחר לרקע של העץ</b>, אם הבחירה מסומנת רק בצבע מילוי.</p>
+
+<!-- ================= TEMPLATE (repeated per theme) ================= -->
+<template id="tpl">
+  <div class="app compact">
+    <div class="bar"><button class="btn">Choose folder</button><span class="path">course-bmad</span></div>
+    <div class="body">
+      <div class="tree">
+        <div class="row" style="--lvl:0"><svg class="chev"><use href="#chev-d"/></svg><svg class="ic"><use href="#folder"/></svg><span class="name">course-bmad</span></div>
+        <div class="row" style="--lvl:1"><svg class="chev"><use href="#chev-r"/></svg><svg class="ic"><use href="#folder"/></svg><span class="name">.git</span></div>
+        <div class="row unread-tint" style="--lvl:1"><svg class="chev"><use href="#chev-r"/></svg><svg class="ic"><use href="#folder"/></svg><span class="name">archive-2025</span><span class="msg">Unable to read this item</span></div>
+        <div class="row" style="--lvl:1"><svg class="chev"><use href="#chev-d"/></svg><svg class="ic"><use href="#folder"/></svg><span class="name">docs</span></div>
+        <div class="row status" style="--lvl:2"><svg class="chev none"></svg>Loading…</div>
+        <div class="row" style="--lvl:1"><svg class="chev"><use href="#chev-d"/></svg><svg class="ic"><use href="#folder"/></svg><span class="name">empty-dir</span></div>
+        <div class="row status" style="--lvl:2"><svg class="chev none"></svg>Empty folder</div>
+        <div class="row unread-gray" style="--lvl:1"><svg class="chev"><use href="#chev-r"/></svg><svg class="ic"><use href="#folder"/></svg><span class="name">private-notes</span><span class="msg">Unable to read this item</span></div>
+        <div class="row" style="--lvl:1"><svg class="chev"><use href="#chev-r"/></svg><svg class="ic"><use href="#folder"/></svg><span class="name">src</span></div>
+        <div class="row" style="--lvl:1"><svg class="chev none"></svg><svg class="ic"><use href="#file"/></svg><span class="name">.env.local</span></div>
+        <div class="row" style="--lvl:1"><svg class="chev none"></svg><svg class="ic"><use href="#file"/></svg><span class="name">a-very-long-file-name-that-goes-on-and-on-forever-final-v2.md</span></div>
+        <div class="row" style="--lvl:1"><svg class="chev none"></svg><svg class="ic"><use href="#file"/></svg><span class="name">README.md</span></div>
+        <div class="row sel" style="--lvl:1"><svg class="chev none"></svg><svg class="ic"><use href="#file"/></svg><span class="name" dir="auto">דוח סופי (2).pdf</span></div>
+      </div>
+      <div class="details">
+        <dl>
+          <dt>Name</dt><dd dir="auto">דוח סופי (2).pdf</dd>
+          <dt>Type</dt><dd>PDF</dd>
+          <dt>Size</dt><dd>1.5 MB</dd>
+          <dt>Modified</dt><dd>Oct 22, 2026, 3:20 PM</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="tpl-small">
+  <div class="app">
+    <div class="body">
+      <div class="tree">
+        <div class="row" style="--lvl:0"><svg class="chev"><use href="#chev-d"/></svg><svg class="ic"><use href="#folder"/></svg><span class="name">course-bmad</span></div>
+        <div class="row" style="--lvl:1"><svg class="chev"><use href="#chev-r"/></svg><svg class="ic"><use href="#folder"/></svg><span class="name">.git</span></div>
+        <div class="row" style="--lvl:1"><svg class="chev"><use href="#chev-d"/></svg><svg class="ic"><use href="#folder"/></svg><span class="name">docs</span></div>
+        <div class="row" style="--lvl:2"><svg class="chev none"></svg><svg class="ic"><use href="#file"/></svg><span class="name">brief.md</span></div>
+        <div class="row" style="--lvl:2"><svg class="chev none"></svg><svg class="ic"><use href="#file"/></svg><span class="name">prd.md</span></div>
+        <div class="row" style="--lvl:1"><svg class="chev"><use href="#chev-r"/></svg><svg class="ic"><use href="#folder"/></svg><span class="name">src</span></div>
+        <div class="row" style="--lvl:1"><svg class="chev none"></svg><svg class="ic"><use href="#file"/></svg><span class="name">package.json</span></div>
+        <div class="row" style="--lvl:1"><svg class="chev none"></svg><svg class="ic"><use href="#file"/></svg><span class="name">README.md</span></div>
+      </div>
+      <div class="details"><div class="empty">Select a file to see its details</div></div>
+    </div>
+  </div>
+</template>
+
+<!-- ================= A ================= -->
+<h2>א. "דיו על נייר": רק גוונים של אפור</h2>
+<p class="lede">בלי צבע הדגשה בכלל. הפריט הנבחר מקבל רקע אפור, והכפתור מצויר בקו בלבד.</p>
+<div class="pair">
+  <div><p class="cap">בהיר</p><div class="mount A light" data-tpl="tpl"></div>
+    <div class="chips"><span class="chip"><i style="background:#f7f7f7"></i>tree #f7f7f7</span><span class="chip"><i style="background:#dcdcdc"></i>selected #dcdcdc</span><span class="chip"><i style="background:#1f1f1f"></i>text #1f1f1f</span><span class="chip"><i style="background:#6b6b6b"></i>muted #6b6b6b</span><span class="chip"><i style="background:#8a5a00"></i>warn #8a5a00</span></div>
+    <div class="ratio">selected/tree <span class="bad">1.28:1</span> · text 15.4 · muted 5.0 · warn 5.5</div></div>
+  <div><p class="cap">כהה</p><div class="mount A dark" data-tpl="tpl"></div>
+    <div class="chips"><span class="chip"><i style="background:#1c1c1c"></i>tree #1c1c1c</span><span class="chip"><i style="background:#3d3d3d"></i>selected #3d3d3d</span><span class="chip"><i style="background:#e8e8e8"></i>text #e8e8e8</span><span class="chip"><i style="background:#9a9a9a"></i>muted #9a9a9a</span><span class="chip"><i style="background:#d9a54a"></i>warn #d9a54a</span></div>
+    <div class="ratio">selected/tree <span class="bad">1.57:1</span> · text 13.9 · muted 6.1 · warn 7.7</div></div>
+</div>
+
+<!-- ================= B ================= -->
+<h2>ב. אפור עם נקודת צבע אחת</h2>
+<p class="lede">אפורים ניטרליים וכחול-צפחה מעומעם אחד. הוא מופיע רק בבחירה, בכפתור ובטבעת ה-focus.</p>
+<div class="pair">
+  <div><p class="cap">בהיר</p><div class="mount B light" data-tpl="tpl"></div>
+    <div class="chips"><span class="chip"><i style="background:#f6f7f8"></i>tree #f6f7f8</span><span class="chip"><i style="background:#d7e3f1"></i>selected #d7e3f1</span><span class="chip"><i style="background:#3b6ea8"></i>accent #3b6ea8</span><span class="chip"><i style="background:#1d2025"></i>text #1d2025</span><span class="chip"><i style="background:#646b75"></i>muted #646b75</span><span class="chip"><i style="background:#8a5a00"></i>warn #8a5a00</span></div>
+    <div class="ratio">selected/tree <span class="bad">1.21:1</span> · accent/tree 4.9 · text 15.2 · muted 5.0 · warn 5.5</div></div>
+  <div><p class="cap">כהה</p><div class="mount B dark" data-tpl="tpl"></div>
+    <div class="chips"><span class="chip"><i style="background:#1b1d21"></i>tree #1b1d21</span><span class="chip"><i style="background:#2b3a4d"></i>selected #2b3a4d</span><span class="chip"><i style="background:#7aa7d9"></i>accent #7aa7d9</span><span class="chip"><i style="background:#e6e8eb"></i>text #e6e8eb</span><span class="chip"><i style="background:#9aa1ab"></i>muted #9aa1ab</span><span class="chip"><i style="background:#d9a54a"></i>warn #d9a54a</span></div>
+    <div class="ratio">selected/tree <span class="bad">1.46:1</span> · accent/tree 6.7 · text 13.7 · muted 6.5 · warn 7.6</div></div>
+</div>
+
+<!-- ================= C ================= -->
+<h2>ג. "מערכת מלאה": בחירה בצבע מלא</h2>
+<p class="lede">הפריט הנבחר מקבל רקע כחול מלא וטקסט לבן, והאייקונים של התיקיות צבעוניים. זה הכי קרוב ל-Finder.</p>
+<div class="pair">
+  <div><p class="cap">בהיר</p><div class="mount C light" data-tpl="tpl"></div>
+    <div class="chips"><span class="chip"><i style="background:#f2f2f4"></i>tree #f2f2f4</span><span class="chip"><i style="background:#0a64d6"></i>selected #0a64d6</span><span class="chip"><i style="background:#3d8fe0"></i>icon #3d8fe0</span><span class="chip"><i style="background:#1d1d1f"></i>text #1d1d1f</span><span class="chip"><i style="background:#6e6e73"></i>muted #6e6e73</span><span class="chip"><i style="background:#8a5a00"></i>warn #8a5a00</span></div>
+    <div class="ratio">selected/tree <span class="ok">4.93:1</span> · white-on-selected 5.5 · text 15.1 · muted 4.5 · warn 5.3</div></div>
+  <div><p class="cap">כהה</p><div class="mount C dark" data-tpl="tpl"></div>
+    <div class="chips"><span class="chip"><i style="background:#1e1e20"></i>tree #1e1e20</span><span class="chip"><i style="background:#0a5bc4"></i>selected #0a5bc4</span><span class="chip"><i style="background:#5aa7ee"></i>icon #5aa7ee</span><span class="chip"><i style="background:#f2f2f7"></i>text #f2f2f7</span><span class="chip"><i style="background:#98989d"></i>muted #98989d</span><span class="chip"><i style="background:#d9a54a"></i>warn #d9a54a</span></div>
+    <div class="ratio">selected/tree <span class="bad">2.62:1</span> · white-on-selected 6.4 · text 14.9 · muted 5.8 · warn 7.5</div></div>
+</div>
+
+<div class="legend"><b>ממצא מהמדידה:</b> בכיוונים א' ו-ב', רקע הבחירה העדין מגיע רק ל-1.2–1.6:1, ולכן הוא לא עובר את הסף של 3:1. גם כיוון ג' לא עובר אותו במצב כהה (2.62:1). פתרון מקובל הוא להוסיף לבחירה <b>פס צר בצד</b> בצבע שעובר את הסף (הטקסט בכיוון א', ה-accent בכיוון ב'). את רקע הבחירה עצמו אפשר להשאיר עדין. בדוגמה הבאה הפס מופיע ליד כל פריט נבחר.</div>
+
+<h2>תוספת אפשרית: בחירה עם פס בצד (א' ו-ב')</h2>
+<div class="pair">
+  <div><p class="cap">א' בהיר + פס (פס/עץ 15.4:1)</p><div class="mount A light withbar" data-tpl="tpl"></div></div>
+  <div><p class="cap">א' כהה + פס (פס/עץ 13.9:1)</p><div class="mount A dark withbar" data-tpl="tpl"></div></div>
+  <div><p class="cap">ב' בהיר + פס (פס/עץ 4.9:1)</p><div class="mount B light withbar" data-tpl="tpl"></div></div>
+  <div><p class="cap">ב' כהה + פס (פס/עץ 6.7:1)</p><div class="mount B dark withbar" data-tpl="tpl"></div></div>
+</div>
+
+<!-- ================= density ================= -->
+<h2>צפיפות: קומפקטי מול רגיל</h2>
+<p class="lede">הצפיפות לא תלויה בכיוון הצבע, ולכן היא מוצגת כאן על אפור ניטרלי (כיוון א'). בחלונית מוצג המצב הריק.</p>
+<div class="pair">
+  <div><p class="cap">קומפקטי: שורה 22px, הזחה 16px לרמה</p><div class="mount A light" data-tpl="tpl-small" data-density="compact"></div></div>
+  <div><p class="cap">רגיל: שורה 28px, הזחה 20px לרמה</p><div class="mount A light" data-tpl="tpl-small" data-density="regular"></div></div>
+  <div><p class="cap">קומפקטי, כהה</p><div class="mount A dark" data-tpl="tpl-small" data-density="compact"></div></div>
+  <div><p class="cap">רגיל, כהה</p><div class="mount A dark" data-tpl="tpl-small" data-density="regular"></div></div>
+</div>
+<p class="note">הערה: המוקאפים בחלק העליון מוצגים בצפיפות הקומפקטית.</p>
+
+<script>
+  document.querySelectorAll('.mount').forEach(m => {
+    const node = document.getElementById(m.dataset.tpl).content.cloneNode(true);
+    const app = node.querySelector('.app');
+    app.classList.remove('compact', 'regular');
+    app.classList.add(m.dataset.density || 'compact');
+    m.appendChild(node);
+  });
+</script>
+</body>
+</html>
