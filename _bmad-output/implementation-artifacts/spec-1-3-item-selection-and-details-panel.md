@@ -110,6 +110,10 @@ async select(id) {
 - המימוש התחיל ב-subagent שנקטע (מגבלת שימוש) אחרי הקוד וטסטי ה-controller; טסטי reducer/`selectDetails` ‏(`selectors.test.ts`) וטסטי RTL ‏(`App.test.tsx`) נכתבו אחר כך ישירות.
 - ‏`npm run check` ירוק: 134 טסטים ב-6 קבצים (אחרי תיקוני ה-review #8, #10, #13). ‏`describe` קיים ל-FR-1 עד FR-8.
 - לא נבדק בדפדפן: AC-11 (צבעים ופריסה), AC-12, וניסוי FR-5 לקובץ — בדיקות ידניות של Ita.
+- **בדיקה ידנית של Ita ב-Chrome (2026-10-23): עברה.** כל בדיקות AC-11 ו-AC-12 עברו, כולל ההשוואה ל-Finder. ניסוי FR-5 לקבצים:
+  - קובץ עם `chmod 000`: במק הפרטים מוצגים רגיל, ו-`getFile()` לא נכשל. כלומר `chmod 000` לא בודק את המקרה של קובץ.
+  - קובץ שנמחק אחרי שהתיקייה נפתחה: ליד השם מוצג `Unable to read this item`, והחלונית חוזרת ל-`Select a file to see its details`. ✅
+  - ה-race הנדיר (A ← B ← A): ‏Ita מקבלת אותו במודע, לפי AD-5.
 
 ## Spec Change Log
 

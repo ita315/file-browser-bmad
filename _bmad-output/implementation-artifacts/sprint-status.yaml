@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-22-2026 20:45
-last_updated: 10-23-2026 14:38
+last_updated: 10-23-2026 15:14
 project: file-browser-bmad
 project_key: NOKEY
 tracking_system: file-system
@@ -38,5 +38,62 @@ development_status:
   epic-1: in-progress
   1-1-project-setup-and-root-folder-selection: done
   1-2-expand-and-collapse-folders-including-unreadable-items: done
-  1-3-item-selection-and-details-panel: review
-  epic-1-retrospective: optional
+  1-3-item-selection-and-details-panel: done
+  epic-1-retrospective: done
+action_items:
+  - id: "epic-1-retro-item-1-a-1-close-the-fr-5-open-question-in-arch"
+    epic: 1
+    action: "A-1: Close the FR-5 Open Question in ARCHITECTURE-SPINE.md:307 and PRD
+      addendum:17 (chmod 000 folder fails, file does not; manual file case = file
+      deleted after listing); update epics.md:59 and epic-1-context.md"
+    owner: "Ita"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-23.md"
+  - id: "epic-1-retro-item-2-a-2-add-folderselected-and-why-it-has-no"
+    epic: 1
+    action: "A-2: Add folderSelected (and why it has no gen) to spine AD-3/AD-5 sequence;
+      record the A->B->A meta race as an accepted deviation"
+    owner: "Ita"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-23.md"
+  - id: "epic-1-retro-item-3-a-3-mark-epic-1-done-in-sprint-status-ya"
+    epic: 1
+    action: "A-3: Mark epic-1 done in sprint-status.yaml via bmad-sprint-planning"
+    owner: "Ita"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-23.md"
+  - id: "epic-1-retro-item-4-a-4-build-the-lint-stylelint-enforcement"
+    epic: 1
+    action: "A-4: Build the lint/stylelint enforcement harness (deferred-work.md)
+      before Epic 2 adds rules"
+    owner: "Amelia (dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-23.md"
+  - id: "epic-1-retro-item-5-a-5-test-layout-before-epic-2-move-reduc"
+    epic: 1
+    action: "A-5: Test layout before Epic 2: move reducer tests to reducer.test.ts,
+      split controller.test.ts, dedupe App.test.tsx setup helpers"
+    owner: "Amelia (dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-23.md"
+  - id: "epic-1-retro-item-6-a-6-add-a-standing-rejected-review-findi"
+    epic: 1
+    action: "A-6: Add a standing rejected-review-findings list (listener throws, Chrome
+      133 attr(), ARIA/keyboard, AbortController) to the epic context"
+    owner: "Ita"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-23.md"
+  - id: "epic-1-retro-item-7-a-7-when-a-story-pre-builds-later-scope"
+    epic: 1
+    action: "A-7: When a story pre-builds later scope, record it in Implementation
+      Notes and in the next story Code Map"
+    owner: "Ita (bmad-build)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-23.md"
+  - id: "epic-1-retro-item-8-a-8-run-contract-deciding-manual-experim"
+    epic: 1
+    action: "A-8: Run contract-deciding manual experiments (like FR-5) as a spike
+      before writing the epic story specs"
+    owner: "Ita"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-23.md"
