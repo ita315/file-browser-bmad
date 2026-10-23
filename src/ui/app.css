@@ -1,0 +1,200 @@
+/* Component styles. Only var(--…) values here; literals live in tokens.css (AD-9). */
+
+/* The one <button> reset: no browser background, border or padding. */
+button {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--typography-body-font-family);
+  font-size: var(--typography-body-font-size);
+  font-weight: var(--typography-body-font-weight);
+  line-height: var(--typography-body-line-height);
+}
+
+.bidi-isolate {
+  unicode-bidi: isolate;
+}
+
+/* app */
+.app {
+  display: flex;
+  flex-direction: column;
+  min-width: var(--spacing-app-min-width);
+  height: 100%;
+  background: var(--color-background);
+  color-scheme: light;
+}
+
+.app-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* top-bar */
+.top-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-bottom: var(--spacing-border-width) solid var(--color-border);
+  background: var(--color-background);
+}
+
+.button-primary {
+  flex: none;
+  padding: var(--spacing-1) var(--spacing-3);
+  border: none;
+  border-radius: var(--rounded-md);
+  background: var(--color-accent);
+  color: var(--color-accent-foreground);
+  font-family: var(--typography-button-font-family);
+  font-size: var(--typography-button-font-size);
+  font-weight: var(--typography-button-font-weight);
+  line-height: var(--typography-button-line-height);
+}
+
+.button-primary:focus-visible {
+  outline: var(--spacing-focus-ring) solid var(--color-accent);
+  outline-offset: var(--spacing-focus-ring-offset);
+}
+
+.root-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-family: var(--typography-small-font-family);
+  font-size: var(--typography-small-font-size);
+  font-weight: var(--typography-small-font-weight);
+  line-height: var(--typography-small-line-height);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unsupported-message {
+  margin: 0;
+  color: var(--color-text);
+}
+
+/* tree */
+.tree {
+  flex: none;
+  box-sizing: border-box;
+  width: var(--spacing-tree-width);
+  padding-block: var(--spacing-2);
+  overflow: hidden auto;
+  border-right: var(--spacing-border-width) solid var(--color-border);
+  background: var(--color-surface-tree);
+}
+
+.tree-row,
+.status-row {
+  display: flex;
+  box-sizing: border-box;
+  align-items: center;
+  gap: var(--spacing-1);
+  height: var(--spacing-row-height);
+  padding-inline: calc(var(--spacing-2) + attr(data-depth type(<number>), 0) * var(--spacing-indent)) var(--spacing-2);
+  color: var(--color-text);
+}
+
+.tree-chevron,
+.tree-chevron-spacer {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--spacing-chevron);
+  height: var(--spacing-chevron);
+  color: var(--color-text-muted);
+}
+
+.tree-chevron-icon {
+  width: var(--spacing-chevron);
+  height: var(--spacing-chevron);
+  stroke-width: var(--spacing-icon-stroke);
+}
+
+.tree-icon {
+  flex: none;
+  width: var(--spacing-icon);
+  height: var(--spacing-icon);
+  color: var(--color-text-muted);
+  stroke-width: var(--spacing-icon-stroke);
+}
+
+.tree-chevron-icon *,
+.tree-icon * {
+  vector-effect: non-scaling-stroke;
+}
+
+.tree-name-button {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--spacing-1);
+  min-width: 0;
+  height: 100%;
+}
+
+.tree-chevron:focus-visible,
+.tree-name-button:focus-visible {
+  outline: var(--spacing-focus-ring) solid var(--color-accent);
+  outline-offset: var(--spacing-focus-ring-offset-inset);
+  border-radius: var(--rounded-sm);
+}
+
+.tree-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-row-text,
+.unreadable-message {
+  color: var(--color-text-muted);
+  font-family: var(--typography-status-font-family);
+  font-size: var(--typography-status-font-size);
+  font-style: var(--typography-status-font-style);
+  font-weight: var(--typography-status-font-weight);
+  line-height: var(--typography-status-line-height);
+  white-space: nowrap;
+}
+
+.unreadable-message {
+  flex: none;
+  margin-inline-start: calc(var(--spacing-2) - var(--spacing-1));
+}
+
+/* details-panel */
+.details-panel {
+  flex: 1;
+  min-width: 0;
+  padding: var(--spacing-4) var(--spacing-5);
+  overflow-y: auto;
+  background: var(--color-background);
+}
+
+.details-empty {
+  margin: 0;
+  color: var(--color-text-muted);
+}

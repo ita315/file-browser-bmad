@@ -1,0 +1,65 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "typescript", "oxc"],
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/only-export-components": ["warn", { "allowConstantExport": true }],
+    "react/forbid-dom-props": ["error", { "forbid": ["style"] }],
+    "no-restricted-globals": [
+      "error",
+      "localStorage",
+      "sessionStorage",
+      "indexedDB",
+      "fetch",
+      "XMLHttpRequest",
+      "WebSocket"
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["src/lib/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["react", "react/*", "react-dom", "react-dom/*", "**/ui", "**/ui/**", "**/adapters", "**/adapters/**"],
+                "message": "src/lib is pure TypeScript: no React, ui or adapters imports (AD-1)."
+              }
+            ]
+          }
+        ],
+        "no-restricted-globals": [
+          "error",
+          "localStorage",
+          "sessionStorage",
+          "indexedDB",
+          "fetch",
+          "XMLHttpRequest",
+          "WebSocket",
+          "window",
+          "globalThis",
+          "self",
+          "document"
+        ]
+      }
+    },
+    {
+      "files": ["src/ui/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/adapters", "**/adapters/**"],
+                "message": "src/ui must not import src/adapters (AD-1)."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

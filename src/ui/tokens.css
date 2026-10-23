@@ -1,0 +1,58 @@
+/* The only file with literal values (AD-9, NFR-4). Values from DESIGN.md. Light only in V1. */
+
+:root {
+  color-scheme: light;
+
+  --color-background: #FFFFFF;
+  --color-surface-tree: #F6F7F8;
+  --color-border: #E3E5E8;
+  --color-text: #1D2025;
+  --color-text-muted: #646B75;
+  --color-accent: #3B6EA8;
+  --color-accent-foreground: #FFFFFF;
+  --color-selected: #D7E3F1;
+
+  --typography-body-font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --typography-body-font-size: 13px;
+  --typography-body-font-weight: 400;
+  --typography-body-line-height: 1.4;
+
+  --typography-small-font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --typography-small-font-size: 12px;
+  --typography-small-font-weight: 400;
+  --typography-small-line-height: 1.4;
+
+  --typography-status-font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --typography-status-font-size: 12px;
+  --typography-status-font-weight: 400;
+  --typography-status-font-style: italic;
+  --typography-status-line-height: 1.4;
+
+  --typography-button-font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --typography-button-font-size: 13px;
+  --typography-button-font-weight: 500;
+  --typography-button-line-height: 1.4;
+
+  --rounded-sm: 4px;
+  --rounded-md: 8px;
+
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-app-min-width: 640px;
+  --spacing-tree-width: 320px;
+  --spacing-row-height: 28px;
+  --spacing-indent: 20px;
+  --spacing-chevron: 14px;
+  --spacing-icon: 14px;
+  --spacing-icon-stroke: 1.5px;
+  --spacing-details-label-width: 80px;
+  --spacing-border-width: 1px;
+  --spacing-selection-bar: 3px;
+  --spacing-focus-ring: 2px;
+  --spacing-focus-ring-offset: 2px;
+  --spacing-focus-ring-offset-inset: -2px;
+}

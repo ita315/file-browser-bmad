@@ -1,0 +1,3 @@
+#!/bin/sh
+# Every commit must keep `npm run check` green (AD-10).
+npm run check

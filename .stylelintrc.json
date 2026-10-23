@@ -1,0 +1,23 @@
+{
+  "rules": {
+    "color-no-hex": true,
+    "color-named": "never",
+    "function-disallowed-list": ["rgb", "rgba", "hsl", "hsla", "hwb", "lab", "lch", "oklab", "oklch", "color", "color-mix", "light-dark"],
+    "unit-disallowed-list": ["px", "rem", "em"],
+    "selector-pseudo-class-disallowed-list": ["hover"],
+    "property-disallowed-list": ["/^transition/", "/^animation/"],
+    "declaration-property-value-disallowed-list": { "cursor": ["pointer"] },
+    "media-feature-name-disallowed-list": ["prefers-color-scheme"]
+  },
+  "overrides": [
+    {
+      "files": ["src/ui/tokens.css"],
+      "rules": {
+        "color-no-hex": null,
+        "color-named": null,
+        "function-disallowed-list": ["light-dark"],
+        "unit-disallowed-list": null
+      }
+    }
+  ]
+}
