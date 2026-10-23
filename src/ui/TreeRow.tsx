@@ -1,8 +1,9 @@
 import type { Row } from '../lib/selectors.ts';
+import type { NodeId } from '../lib/state.ts';
 import { TEXT } from '../lib/text.ts';
 import { ChevronIcon, FileIcon, FolderIcon } from './icons.tsx';
 
-export function TreeRow({ row }: { row: Row }) {
+export function TreeRow({ row, onToggle }: { row: Row; onToggle: (id: NodeId) => void }) {
   if (row.type === 'status') {
     return (
       <div className="status-row" data-depth={row.depth}>
@@ -16,7 +17,7 @@ export function TreeRow({ row }: { row: Row }) {
       {row.chevron === 'none' ? (
         <span className="tree-chevron-spacer" />
       ) : (
-        <button type="button" className="tree-chevron">
+        <button type="button" className="tree-chevron" onClick={() => onToggle(row.id)}>
           <ChevronIcon open={row.chevron === 'expanded'} />
         </button>
       )}

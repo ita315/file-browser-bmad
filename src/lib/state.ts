@@ -47,6 +47,8 @@ export interface AppState {
 
 export type Action =
   | { type: 'rootPicked'; gen: number; entry: Entry }
+  | { type: 'toggled'; id: NodeId }
+  | { type: 'loadStarted'; gen: number; id: NodeId }
   | { type: 'loadSucceeded'; gen: number; id: NodeId; entries: readonly Entry[] }
   | { type: 'loadTruncated'; gen: number; id: NodeId; entries: readonly Entry[] }
   | { type: 'loadFailed'; gen: number; id: NodeId };

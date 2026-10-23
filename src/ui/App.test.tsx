@@ -96,3 +96,132 @@ describe('FR-3 tree rows', () => {
     expect(rootRow?.querySelector('.tree-chevron')).toBeNull();
   });
 });
+
+describe('FR-3 FR-5 chevron and row structure', () => {
+  async function setup(root: ReturnType<typeof dir>) {
+    const source = createFakeSource();
+    const controller = createController(source);
+    const toggle = vi.spyOn(controller, 'toggle');
+    source.queuePick('project', root);
+    const view = render(<App controller={controller} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: TEXT.openFolder }));
+    await screen.findByText('src');
+    return { ...view, user, controller, toggle, source };
+  }
+
+  function rowOf(container: HTMLElement, name: string): Element {
+    const row = [...container.querySelectorAll('.tree-row')].find(
+      (r) => r.querySelector('.tree-name')?.textContent === name,
+    );
+    if (!row) throw new Error(`no row ${name}`);
+    return row;
+  }
+
+  it('opens and closes a folder from its chevron, without selecting it (AC-1)', async () => {
+    const gate = deferred();
+    const { container, user, controller, toggle } = await setup(
+      dir({ src: dir({ 'b.ts': file(), 'a.ts': file() }, { gate: gate.promise }) }),
+    );
+    const chevron = rowOf(container, 'src').querySelector('button.tree-chevron') as HTMLElement;
+
+    await user.click(chevron);
+    expect(toggle).toHaveBeenCalledWith('src');
+    const loading = await screen.findByText(TEXT.loading);
+    expect(loading.closest('.status-row')?.getAttribute('data-depth')).toBe('2');
+
+    gate.resolve();
+    expect(await screen.findByText('a.ts')).toBeTruthy();
+    expect(rowOf(container, 'a.ts').getAttribute('data-depth')).toBe('2');
+    expect([...container.querySelectorAll('.tree-name')].map((n) => n.textContent)).toEqual([
+      'project',
+      'src',
+      'a.ts',
+      'b.ts',
+    ]);
+    expect(controller.getState().selectedId).toBeNull();
+
+    await user.click(rowOf(container, 'src').querySelector('button.tree-chevron') as HTMLElement);
+    expect(screen.queryByText('a.ts')).toBeNull();
+    expect(controller.getState().selectedId).toBeNull();
+  });
+
+  it('does not toggle when the name is clicked', async () => {
+    const { container, user, toggle } = await setup(dir({ src: dir({ 'a.ts': file() }) }));
+    await user.click(rowOf(container, 'src').querySelector('.tree-name-button') as HTMLElement);
+    expect(toggle).not.toHaveBeenCalled();
+    expect(screen.queryByText('a.ts')).toBeNull();
+  });
+
+  it('gives every row a chevron button or a spacer and a name button, with depth only in data-depth (AC-10)', async () => {
+    const { container, user } = await setup(
+      dir({
+        src: dir({ lib: dir({ 'deep.ts': file() }), 'index.ts': file() }),
+        logs: dir({ 'a.log': file(), 'b.log': file(), 'c.log': file() }, { failAfter: 2 }),
+        'secret-folder-with-a-very-long-name-that-does-not-fit': dir({ x: file() }, { failAfter: 0 }),
+        'a-very-long-file-name-that-would-not-fit-in-the-tree.txt': file(),
+      }),
+    );
+    const longSecret = 'secret-folder-with-a-very-long-name-that-does-not-fit';
+    await user.click(rowOf(container, 'src').querySelector('button.tree-chevron') as HTMLElement);
+    await user.click((await screen.findByText('lib')).closest('.tree-row')?.querySelector('button.tree-chevron') as HTMLElement);
+    await screen.findByText('deep.ts');
+    await user.click(rowOf(container, 'logs').querySelector('button.tree-chevron') as HTMLElement);
+    await screen.findByText('b.log');
+    await user.click(rowOf(container, longSecret).querySelector('button.tree-chevron') as HTMLElement);
+    await screen.findByText(TEXT.unableToRead, { selector: '.unreadable-message' });
+
+    const longName = 'a-very-long-file-name-that-would-not-fit-in-the-tree.txt';
+    const expected: Array<[string, string, 'chevron' | 'spacer']> = [
+      ['project', '0', 'chevron'],
+      ['logs', '1', 'chevron'],
+      ['a.log', '2', 'spacer'],
+      ['b.log', '2', 'spacer'],
+      [longSecret, '1', 'spacer'],
+      ['src', '1', 'chevron'],
+      ['lib', '2', 'chevron'],
+      ['deep.ts', '3', 'spacer'],
+      ['index.ts', '2', 'spacer'],
+      [longName, '1', 'spacer'],
+    ];
+    const rows = [...container.querySelectorAll('.tree-row')];
+    expect(rows.map((r) => r.querySelector('.tree-name')?.textContent)).toEqual(expected.map(([name]) => name));
+    rows.forEach((row, i) => {
+      const [, depth, lead] = expected[i];
+      expect(row.getAttribute('data-depth')).toBe(depth);
+      expect(row.children).toHaveLength(2);
+      expect(row.children[0].matches(lead === 'chevron' ? 'button.tree-chevron' : 'span.tree-chevron-spacer')).toBe(true);
+      expect(row.children[1].matches('button.tree-name-button')).toBe(true);
+    });
+
+    // The failed folder: spacer, message next to the name, nothing below it.
+    const secret = rowOf(container, longSecret);
+    expect(secret.querySelector('.tree-chevron-spacer')).not.toBeNull();
+    expect(secret.querySelector('.tree-name-button .unreadable-message')?.textContent).toBe(TEXT.unableToRead);
+    expect(secret.nextElementSibling?.querySelector('.tree-name')?.textContent).toBe('src');
+
+    // The truncated folder: one nameless status row after its subtree.
+    const logsStatus = rowOf(container, 'b.log').nextElementSibling;
+    expect(logsStatus?.matches('.status-row[data-depth="2"]')).toBe(true);
+    expect(logsStatus?.textContent).toBe(TEXT.unableToRead);
+    expect(logsStatus?.querySelector('button, .tree-name')).toBeNull();
+
+    // No inline style anywhere, and no sizing attributes on any SVG.
+    expect(container.querySelector('[style]')).toBeNull();
+    for (const svg of container.querySelectorAll('svg')) {
+      expect(svg.getAttribute('stroke')).toBe('currentColor');
+      for (const attr of ['width', 'height', 'stroke-width']) expect(svg.hasAttribute(attr)).toBe(false);
+      for (const el of svg.querySelectorAll('*')) {
+        for (const attr of ['width', 'height', 'stroke-width']) expect(el.hasAttribute(attr)).toBe(false);
+      }
+    }
+  });
+
+  it('shows Empty folder at depth + 1 with no button (AC-4)', async () => {
+    const { container, user } = await setup(dir({ src: dir() }));
+    await user.click(rowOf(container, 'src').querySelector('button.tree-chevron') as HTMLElement);
+    const status = (await screen.findByText(TEXT.emptyFolder)).closest('.status-row');
+    expect(status?.getAttribute('data-depth')).toBe('2');
+    expect(status?.querySelector('button')).toBeNull();
+  });
+});

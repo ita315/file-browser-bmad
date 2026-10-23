@@ -9,6 +9,8 @@ export interface Controller {
   getState(): AppState;
   subscribe(listener: () => void): () => void;
   openFolder(): Promise<void>;
+  /** FR-3: flips a folder open or closed; reads it on the first open in this generation. Never rejects. */
+  toggle(id: NodeId): Promise<void>;
 }
 
 export function createController(source: DirectorySource): Controller {
@@ -25,6 +27,7 @@ export function createController(source: DirectorySource): Controller {
   async function loadFolder(gen: number, id: NodeId, ref: SourceRef): Promise<void> {
     const entries: Entry[] = [];
     try {
+      // Both the listChildren call and the iteration are inside the try (AD-6).
       for await (const entry of source.listChildren(ref)) entries.push(entry);
     } catch {
       dispatch(
@@ -52,6 +55,14 @@ export function createController(source: DirectorySource): Controller {
       const gen = state.generation + 1;
       dispatch({ type: 'rootPicked', gen, entry });
       await loadFolder(gen, ROOT_ID, entry.ref);
+    },
+    async toggle(id) {
+      dispatch({ type: 'toggled', id });
+      const node = state.nodes.get(id);
+      if (!node || !state.expanded.has(id) || node.load !== 'unloaded') return;
+      const gen = state.generation;
+      dispatch({ type: 'loadStarted', gen, id });
+      await loadFolder(gen, id, node.ref);
     },
   };
 }

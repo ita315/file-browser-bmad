@@ -57,6 +57,23 @@ export function reduce(state: AppState, action: Action): AppState {
         details: NO_DETAILS,
       };
     }
+    case 'toggled': {
+      // Only flips `expanded`. Files, failed folders and unknown ids are dropped.
+      const node = state.nodes.get(action.id);
+      if (!node || node.kind !== 'directory' || node.load === 'failed') return state;
+      const expanded = new Set(state.expanded);
+      if (expanded.has(action.id)) expanded.delete(action.id);
+      else expanded.add(action.id);
+      return { ...state, expanded };
+    }
+    case 'loadStarted': {
+      if (action.gen !== state.generation) return state;
+      const node = state.nodes.get(action.id);
+      if (!node || node.kind !== 'directory' || node.load !== 'unloaded') return state;
+      const nodes = new Map(state.nodes);
+      nodes.set(action.id, { ...node, load: 'loading' });
+      return { ...state, nodes };
+    }
     case 'loadSucceeded':
     case 'loadTruncated': {
       if (isStaleLoad(state, action.gen, action.id)) return state;
