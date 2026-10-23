@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createController } from './controller.ts';
-import { selectVisibleRows } from './selectors.ts';
+import { formatDate } from './format.ts';
+import { selectDetails, selectVisibleRows } from './selectors.ts';
 import type { ItemRow } from './selectors.ts';
 import type { Entry, SourceRef } from './source.ts';
 import { ROOT_ID } from './state.ts';
@@ -507,5 +508,295 @@ describe('FR-5 errors never leak out of toggle (AC-8)', () => {
     gate.reject(new Error('denied'));
     const bad = dir({ x: file() }, { gate: gate.promise });
     await expectOutcome(createFakeSource(), dir({ bad, good: good() }), { load: 'failed' });
+  });
+});
+
+function itemRow(state: Parameters<typeof selectVisibleRows>[0], name: string): ItemRow {
+  const row = selectVisibleRows(state).find((r): r is ItemRow => r.type === 'item' && r.name === name);
+  if (!row) throw new Error(`no row ${name}`);
+  return row;
+}
+
+describe('FR-7 selecting a file (AC-1)', () => {
+  it('shows Name + Loading… while reading, then Name/Type/Size/Modified, and marks the row selected', async () => {
+    const gate = deferred();
+    const modified = Date.UTC(2026, 9, 22, 15, 20);
+    const report = file({ size: 1_500, lastModified: modified, gate: gate.promise });
+    const { source, controller } = await pickRoot(dir({ 'report.pdf': report }));
+
+    const done = controller.select('report.pdf');
+    let state = controller.getState();
+    expect(state.selectedId).toBe('report.pdf');
+    expect(selectDetails(state)).toEqual({ type: 'loading', name: 'report.pdf' });
+    expect(itemRow(state, 'report.pdf').selected).toBe(true);
+    expect(source.calls.readFileMeta).toEqual([report]);
+
+    gate.resolve();
+    await done;
+    state = controller.getState();
+    expect(selectDetails(state)).toEqual({
+      type: 'file',
+      name: 'report.pdf',
+      typeLabel: 'PDF',
+      size: '1.5 KB',
+      modified: formatDate(modified),
+    });
+    expect(itemRow(state, 'report.pdf').selected).toBe(true);
+  });
+
+  it('shows — for an unknown modification date', async () => {
+    const { controller } = await pickRoot(dir({ README: file({ size: 3, lastModified: null }) }));
+    await controller.select('README');
+    expect(selectDetails(controller.getState())).toEqual({
+      type: 'file',
+      name: 'README',
+      typeLabel: TEXT.unknownValue,
+      size: '3 B',
+      modified: TEXT.unknownValue,
+    });
+  });
+
+  it('ignores an unknown id', async () => {
+    const { source, controller } = await pickRoot(dir({ a: file() }));
+    const before = controller.getState();
+    await controller.select('nope');
+    expect(controller.getState()).toBe(before);
+    expect(source.calls.readFileMeta).toEqual([]);
+  });
+});
+
+describe('FR-8 selecting a folder (AC-5)', () => {
+  it('shows only Name and Folder, keeps a closed folder closed and never reads the disk', async () => {
+    const src = dir({ 'a.ts': file() });
+    const { source, controller } = await pickRoot(dir({ src }));
+    const listsBefore = source.calls.listChildren.length;
+
+    await controller.select('src');
+    const state = controller.getState();
+    expect(state.selectedId).toBe('src');
+    expect(state.expanded.has('src')).toBe(false);
+    expect(selectDetails(state)).toEqual({ type: 'folder', name: 'src' });
+    expect(itemRow(state, 'src').selected).toBe(true);
+    expect(source.calls.listChildren).toHaveLength(listsBefore);
+    expect(source.calls.readFileMeta).toEqual([]);
+  });
+
+  it('keeps an open folder open, including the root', async () => {
+    const { source, controller } = await pickRoot(dir({ a: file() }));
+    const listsBefore = source.calls.listChildren.length;
+    await controller.select(ROOT_ID);
+    const state = controller.getState();
+    expect(state.expanded.has(ROOT_ID)).toBe(true);
+    expect(selectDetails(state)).toEqual({ type: 'folder', name: 'project' });
+    expect(rowLabels(state)).toEqual(['project', 'a']);
+    expect(source.calls.listChildren).toHaveLength(listsBefore);
+  });
+
+  it('re-selecting the selected folder keeps the same reference', async () => {
+    const { controller } = await pickRoot(dir({ src: dir() }));
+    await controller.select('src');
+    const before = controller.getState();
+    await controller.select('src');
+    expect(controller.getState()).toBe(before);
+  });
+
+  it('drops a pending file read when a folder is selected', async () => {
+    const gate = deferred();
+    const { controller } = await pickRoot(dir({ src: dir(), 'a.txt': file({ gate: gate.promise }) }));
+    const done = controller.select('a.txt');
+    await controller.select('src');
+    const afterFolder = controller.getState();
+    gate.resolve();
+    await done;
+    expect(controller.getState()).toBe(afterFolder);
+    expect(selectDetails(afterFolder)).toEqual({ type: 'folder', name: 'src' });
+  });
+});
+
+describe('FR-3 FR-7 stale file details (AC-6)', () => {
+  it('shows B when A was clicked first and its details arrive last', async () => {
+    const gateA = deferred();
+    const gateB = deferred();
+    const { controller } = await pickRoot(
+      dir({ 'a.txt': file({ size: 1, gate: gateA.promise }), 'b.txt': file({ size: 2, gate: gateB.promise }) }),
+    );
+    const doneA = controller.select('a.txt');
+    const doneB = controller.select('b.txt');
+    gateB.resolve();
+    await doneB;
+    const afterB = controller.getState();
+    expect(selectDetails(afterB)).toMatchObject({ type: 'file', name: 'b.txt', size: '2 B' });
+
+    gateA.resolve();
+    await doneA;
+    expect(controller.getState()).toBe(afterB);
+  });
+
+  it('shows A after A → B → A, whichever read finishes last, and reads A again', async () => {
+    const gateA = deferred();
+    const gateB = deferred();
+    const a = file({ size: 1, gate: gateA.promise });
+    const b = file({ size: 2, gate: gateB.promise });
+    const { source, controller } = await pickRoot(dir({ 'a.txt': a, 'b.txt': b }));
+    const first = controller.select('a.txt');
+    const second = controller.select('b.txt');
+    const third = controller.select('a.txt');
+    expect(source.calls.readFileMeta).toEqual([a, b, a]);
+    expect(selectDetails(controller.getState())).toEqual({ type: 'loading', name: 'a.txt' });
+
+    gateB.resolve();
+    await second;
+    expect(selectDetails(controller.getState())).toEqual({ type: 'loading', name: 'a.txt' });
+    gateA.resolve();
+    await Promise.all([first, third]);
+    expect(selectDetails(controller.getState())).toMatchObject({ type: 'file', name: 'a.txt', size: '1 B' });
+  });
+
+  it('selecting the selected file keeps the same reference and does not read again', async () => {
+    const a = file({ size: 1 });
+    const { source, controller } = await pickRoot(dir({ 'a.txt': a }));
+    await controller.select('a.txt');
+    const before = controller.getState();
+    const listener = vi.fn();
+    controller.subscribe(listener);
+    await controller.select('a.txt');
+    expect(controller.getState()).toBe(before);
+    expect(listener).not.toHaveBeenCalled();
+    expect(source.calls.readFileMeta).toEqual([a]);
+  });
+
+  it('selecting the selected file while it is still loading does not read again', async () => {
+    const gate = deferred();
+    const a = file({ gate: gate.promise });
+    const { source, controller } = await pickRoot(dir({ 'a.txt': a }));
+    const done = controller.select('a.txt');
+    await controller.select('a.txt');
+    expect(source.calls.readFileMeta).toEqual([a]);
+    gate.resolve();
+    await done;
+    expect(selectDetails(controller.getState())).toMatchObject({ type: 'file', name: 'a.txt' });
+  });
+});
+
+describe('FR-5 unreadable files (AC-7, AC-8)', () => {
+  it('marks a file whose read fails, clears the selection and empties the panel', async () => {
+    const { controller } = await pickRoot(dir({ 'locked.txt': file({ failMeta: true }) }));
+    await controller.select('locked.txt');
+    const state = controller.getState();
+    expect(itemRow(state, 'locked.txt')).toMatchObject({ unreadable: true, selected: false });
+    expect(state.selectedId).toBeNull();
+    expect(selectDetails(state)).toEqual({ type: 'empty' });
+  });
+
+  it('only marks the file when another file was selected in the meantime', async () => {
+    const gate = deferred();
+    const { controller } = await pickRoot(
+      dir({ 'locked.txt': file({ failMeta: true, gate: gate.promise }), 'ok.txt': file({ size: 5 }) }),
+    );
+    const doneLocked = controller.select('locked.txt');
+    await controller.select('ok.txt');
+    gate.resolve();
+    await doneLocked;
+    const state = controller.getState();
+    expect(itemRow(state, 'locked.txt').unreadable).toBe(true);
+    expect(state.selectedId).toBe('ok.txt');
+    expect(selectDetails(state)).toMatchObject({ type: 'file', name: 'ok.txt', size: '5 B' });
+  });
+
+  it('clears the selection and does not read again when a known unreadable file is clicked', async () => {
+    const locked = file({ failMeta: true });
+    const { source, controller } = await pickRoot(dir({ 'locked.txt': locked, 'ok.txt': file() }));
+    await controller.select('locked.txt');
+    await controller.select('ok.txt');
+    expect(controller.getState().selectedId).toBe('ok.txt');
+
+    await controller.select('locked.txt');
+    const state = controller.getState();
+    expect(state.selectedId).toBeNull();
+    expect(selectDetails(state)).toEqual({ type: 'empty' });
+    expect(source.calls.readFileMeta.filter((f) => f === locked)).toHaveLength(1);
+  });
+
+  it('clears the selection and does not read again when a failed folder is clicked', async () => {
+    const blocked = dir({ x: file() }, { failAfter: 0 });
+    const { source, controller } = await pickRoot(dir({ blocked, 'ok.txt': file() }));
+    await controller.toggle('blocked');
+    await controller.select('ok.txt');
+    const reads = source.calls.listChildren.length;
+
+    await controller.select('blocked');
+    const state = controller.getState();
+    expect(state.selectedId).toBeNull();
+    expect(selectDetails(state)).toEqual({ type: 'empty' });
+    expect(source.calls.listChildren).toHaveLength(reads);
+  });
+
+  it('select never rejects, even when readFileMeta throws synchronously', async () => {
+    const source = createFakeSource();
+    source.readFileMeta = () => {
+      throw new Error('sync boom');
+    };
+    const { controller } = await pickRoot(dir({ 'a.txt': file() }), source);
+    await expect(controller.select('a.txt')).resolves.toBeUndefined();
+    expect(itemRow(controller.getState(), 'a.txt').unreadable).toBe(true);
+  });
+});
+
+describe('FR-3 FR-5 hidden selection (AC-9)', () => {
+  it('keeps a file selected with its details when its parent is collapsed', async () => {
+    const { controller } = await pickRoot(dir({ src: dir({ 'a.ts': file({ size: 10 }) }) }));
+    await controller.toggle('src');
+    await controller.select('src/a.ts');
+    const details = selectDetails(controller.getState());
+    expect(details).toMatchObject({ type: 'file', name: 'a.ts' });
+
+    await controller.toggle('src');
+    const state = controller.getState();
+    expect(rowLabels(state)).toEqual(['project', 'src']);
+    expect(state.selectedId).toBe('src/a.ts');
+    expect(selectDetails(state)).toEqual(details);
+  });
+
+  it('keeps a selected folder selected when it then fails to open', async () => {
+    const { controller } = await pickRoot(dir({ blocked: dir({ x: file() }, { failAfter: 0 }) }));
+    await controller.select('blocked');
+    await controller.toggle('blocked');
+    const state = controller.getState();
+    expect(state.nodes.get('blocked')?.load).toBe('failed');
+    expect(state.selectedId).toBe('blocked');
+    expect(selectDetails(state)).toEqual({ type: 'folder', name: 'blocked' });
+  });
+});
+
+describe('FR-1 FR-6 root replacement clears the selection (AC-10)', () => {
+  it('resets the panel and drops details of the old root that arrive later', async () => {
+    const gate = deferred();
+    const root = dir({ 'a.txt': file({ gate: gate.promise }) });
+    const { source, controller } = await pickRoot(root);
+    const done = controller.select('a.txt');
+
+    source.queuePick('project', root);
+    await controller.openFolder();
+    const afterPick = controller.getState();
+    expect(afterPick.selectedId).toBeNull();
+    expect(selectDetails(afterPick)).toEqual({ type: 'empty' });
+
+    gate.resolve();
+    await done;
+    expect(controller.getState()).toBe(afterPick);
+  });
+
+  it('drops a failure of the old root: the new tree is not marked', async () => {
+    const gate = deferred();
+    const root = dir({ 'a.txt': file({ failMeta: true, gate: gate.promise }) });
+    const { source, controller } = await pickRoot(root);
+    const done = controller.select('a.txt');
+    source.queuePick('project', root);
+    await controller.openFolder();
+    const afterPick = controller.getState();
+    gate.resolve();
+    await done;
+    expect(controller.getState()).toBe(afterPick);
+    expect(itemRow(afterPick, 'a.txt').unreadable).toBe(false);
   });
 });

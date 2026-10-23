@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { reduce } from './reducer.ts';
 import { selectDetails, selectTopBar, selectVisibleRows } from './selectors.ts';
 import type { Entry, SourceRef } from './source.ts';
+import { formatDate } from './format.ts';
 import { createInitialState, statusKey } from './state.ts';
+import type { AppState } from './state.ts';
 import { TEXT } from './text.ts';
 
 const ref = {} as SourceRef;
@@ -184,5 +186,135 @@ describe('FR-3 FR-5 selectVisibleRows in depth', () => {
       'secret',
       'z.txt',
     ]);
+  });
+});
+
+describe('FR-3 FR-5 FR-7 reducer: selection and meta actions', () => {
+  const picked = reduce(createInitialState(true), { type: 'rootPicked', gen: 1, entry: entry('root', 'directory') });
+  const loaded = reduce(picked, {
+    type: 'loadSucceeded',
+    gen: 1,
+    id: '',
+    entries: [entry('src', 'directory'), entry('a.txt'), entry('b.txt')],
+  });
+  const loadingA = reduce(loaded, { type: 'fileSelected', gen: 1, id: 'a.txt', requestId: 1 });
+  const readyA = reduce(loadingA, {
+    type: 'metaLoaded',
+    gen: 1,
+    requestId: 1,
+    meta: { size: 1500, lastModified: 0 },
+  });
+
+  it('fileSelected selects a file and starts loading its details', () => {
+    expect(loadingA.selectedId).toBe('a.txt');
+    expect(loadingA.details).toEqual({ kind: 'loading', id: 'a.txt', requestId: 1 });
+    expect(readyA.details).toEqual({ kind: 'ready', id: 'a.txt', requestId: 1, size: 1500, lastModified: 0 });
+  });
+
+  it('drops fileSelected from an old generation, for the selected file, a folder or an unknown id (same reference)', () => {
+    expect(reduce(loaded, { type: 'fileSelected', gen: 0, id: 'a.txt', requestId: 1 })).toBe(loaded);
+    expect(reduce(loadingA, { type: 'fileSelected', gen: 1, id: 'a.txt', requestId: 2 })).toBe(loadingA);
+    expect(reduce(readyA, { type: 'fileSelected', gen: 1, id: 'a.txt', requestId: 2 })).toBe(readyA);
+    expect(reduce(loaded, { type: 'fileSelected', gen: 1, id: 'src', requestId: 1 })).toBe(loaded);
+    expect(reduce(loaded, { type: 'fileSelected', gen: 1, id: 'missing', requestId: 1 })).toBe(loaded);
+  });
+
+  it('drops metaLoaded from an old generation or an old request (same reference)', () => {
+    expect(reduce(loadingA, { type: 'metaLoaded', gen: 2, requestId: 1, meta: { size: 1, lastModified: 0 } })).toBe(loadingA);
+    expect(reduce(loadingA, { type: 'metaLoaded', gen: 1, requestId: 7, meta: { size: 1, lastModified: 0 } })).toBe(loadingA);
+    expect(reduce(readyA, { type: 'metaLoaded', gen: 1, requestId: 1, meta: { size: 1, lastModified: 0 } })).toBe(readyA);
+    expect(reduce(loaded, { type: 'metaLoaded', gen: 1, requestId: 1, meta: { size: 1, lastModified: 0 } })).toBe(loaded);
+  });
+
+  it('metaFailed marks the file; it clears the selection only for the current request', () => {
+    const failed = reduce(loadingA, { type: 'metaFailed', gen: 1, id: 'a.txt', requestId: 1 });
+    expect(failed.nodes.get('a.txt')?.unreadable).toBe(true);
+    expect(failed.selectedId).toBeNull();
+    expect(failed.details).toEqual({ kind: 'none' });
+
+    const loadingB = reduce(loadingA, { type: 'fileSelected', gen: 1, id: 'b.txt', requestId: 2 });
+    const oldFailed = reduce(loadingB, { type: 'metaFailed', gen: 1, id: 'a.txt', requestId: 1 });
+    expect(oldFailed.nodes.get('a.txt')?.unreadable).toBe(true);
+    expect(oldFailed.selectedId).toBe('b.txt');
+    expect(oldFailed.details).toBe(loadingB.details);
+  });
+
+  it('drops metaFailed from an old generation, for a folder or an unknown id, or when already marked (same reference)', () => {
+    expect(reduce(loadingA, { type: 'metaFailed', gen: 2, id: 'a.txt', requestId: 1 })).toBe(loadingA);
+    expect(reduce(loadingA, { type: 'metaFailed', gen: 1, id: 'src', requestId: 1 })).toBe(loadingA);
+    expect(reduce(loadingA, { type: 'metaFailed', gen: 1, id: 'missing', requestId: 1 })).toBe(loadingA);
+    const marked = reduce(loadingA, { type: 'metaFailed', gen: 1, id: 'a.txt', requestId: 1 });
+    expect(reduce(marked, { type: 'metaFailed', gen: 1, id: 'a.txt', requestId: 1 })).toBe(marked);
+  });
+
+  it('drops folderSelected for an unknown id (same reference)', () => {
+    expect(reduce(loaded, { type: 'folderSelected', id: 'missing' })).toBe(loaded);
+  });
+
+  it('fileSelected on an unreadable file clears the selection; same reference when nothing is selected', () => {
+    const marked = reduce(loadingA, { type: 'metaFailed', gen: 1, id: 'a.txt', requestId: 1 });
+    expect(reduce(marked, { type: 'fileSelected', gen: 1, id: 'a.txt', requestId: 2 })).toBe(marked);
+    const withB = reduce(marked, { type: 'fileSelected', gen: 1, id: 'b.txt', requestId: 2 });
+    const cleared = reduce(withB, { type: 'fileSelected', gen: 1, id: 'a.txt', requestId: 3 });
+    expect(cleared.selectedId).toBeNull();
+    expect(cleared.details).toEqual({ kind: 'none' });
+  });
+
+  it('folderSelected selects a folder with no details, and clears the selection on a failed folder', () => {
+    const folder = reduce(readyA, { type: 'folderSelected', id: 'src' });
+    expect(folder.selectedId).toBe('src');
+    expect(folder.details).toEqual({ kind: 'none' });
+    expect(reduce(folder, { type: 'folderSelected', id: 'src' })).toBe(folder);
+    expect(reduce(loaded, { type: 'folderSelected', id: 'a.txt' })).toBe(loaded);
+
+    const started = reduce(folder, { type: 'loadStarted', gen: 1, id: 'src' });
+    const failed = reduce(started, { type: 'loadFailed', gen: 1, id: 'src' });
+    expect(failed.selectedId).toBe('src');
+    const cleared = reduce(failed, { type: 'folderSelected', id: 'src' });
+    expect(cleared.selectedId).toBeNull();
+    expect(reduce(cleared, { type: 'folderSelected', id: 'src' })).toBe(cleared);
+  });
+});
+
+describe('FR-6 FR-7 FR-8 selectDetails', () => {
+  const picked = reduce(createInitialState(true), { type: 'rootPicked', gen: 1, entry: entry('root', 'directory') });
+  const loaded = reduce(picked, {
+    type: 'loadSucceeded',
+    gen: 1,
+    id: '',
+    entries: [entry('src', 'directory'), entry('report.pdf')],
+  });
+  const loading = reduce(loaded, { type: 'fileSelected', gen: 1, id: 'report.pdf', requestId: 1 });
+  const ms = Date.UTC(2026, 9, 22, 15, 20);
+  const ready = (lastModified: number | null): AppState =>
+    reduce(loading, { type: 'metaLoaded', gen: 1, requestId: 1, meta: { size: 1500, lastModified } });
+
+  it('shows the empty prompt with nothing selected', () => {
+    expect(selectDetails(loaded)).toEqual({ type: 'empty' });
+  });
+
+  it('shows the name while a file is loading', () => {
+    expect(selectDetails(loading)).toEqual({ type: 'loading', name: 'report.pdf' });
+  });
+
+  it('shows ready strings for a file', () => {
+    expect(selectDetails(ready(ms))).toEqual({
+      type: 'file',
+      name: 'report.pdf',
+      typeLabel: 'PDF',
+      size: '1.5 KB',
+      modified: formatDate(ms),
+    });
+    expect(selectDetails(ready(null))).toMatchObject({ modified: TEXT.unknownValue });
+  });
+
+  it('shows only the name for a folder', () => {
+    expect(selectDetails(reduce(ready(ms), { type: 'folderSelected', id: 'src' }))).toEqual({ type: 'folder', name: 'src' });
+    expect(selectDetails(reduce(loaded, { type: 'folderSelected', id: '' }))).toEqual({ type: 'folder', name: 'root' });
+  });
+
+  it('marks only the selected row', () => {
+    const rows = selectVisibleRows(loading).filter((r) => r.type === 'item');
+    expect(rows.filter((r) => r.selected).map((r) => r.id)).toEqual(['report.pdf']);
   });
 });

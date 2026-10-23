@@ -1,6 +1,6 @@
 // AppState, TreeNode, ids and actions (AD-3, AD-4, AD-5, AD-6).
 
-import type { Entry, EntryKind, SourceRef } from './source.ts';
+import type { Entry, EntryKind, FileMeta, SourceRef } from './source.ts';
 
 /** Path relative to the root. The root itself is ''. */
 export type NodeId = string;
@@ -33,8 +33,20 @@ export interface TreeNode {
   readonly unreadable: boolean;
 }
 
-/** Describes a file selection only. Story 1.1 has no selection yet. */
-export type Details = { readonly kind: 'none' };
+/**
+ * Describes a file selection only (AD-5). A selected folder has `none`.
+ * `requestId` identifies the select that started the read.
+ */
+export type Details =
+  | { readonly kind: 'none' }
+  | { readonly kind: 'loading'; readonly id: NodeId; readonly requestId: number }
+  | {
+      readonly kind: 'ready';
+      readonly id: NodeId;
+      readonly requestId: number;
+      readonly size: number;
+      readonly lastModified: number | null;
+    };
 
 export interface AppState {
   readonly supported: boolean;
@@ -51,7 +63,11 @@ export type Action =
   | { type: 'loadStarted'; gen: number; id: NodeId }
   | { type: 'loadSucceeded'; gen: number; id: NodeId; entries: readonly Entry[] }
   | { type: 'loadTruncated'; gen: number; id: NodeId; entries: readonly Entry[] }
-  | { type: 'loadFailed'; gen: number; id: NodeId };
+  | { type: 'loadFailed'; gen: number; id: NodeId }
+  | { type: 'fileSelected'; gen: number; id: NodeId; requestId: number }
+  | { type: 'folderSelected'; id: NodeId }
+  | { type: 'metaLoaded'; gen: number; requestId: number; meta: FileMeta }
+  | { type: 'metaFailed'; gen: number; id: NodeId; requestId: number };
 
 export const NO_DETAILS: Details = { kind: 'none' };
 

@@ -44,6 +44,12 @@ function isStaleLoad(state: AppState, gen: number, id: NodeId): boolean {
   return !node || node.kind !== 'directory' || node.load !== 'loading';
 }
 
+/** Clears the selection; the same reference when nothing is selected. */
+function clearSelection(state: AppState): AppState {
+  if (state.selectedId === null && state.details.kind === 'none') return state;
+  return { ...state, selectedId: null, details: NO_DETAILS };
+}
+
 export function reduce(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'rootPicked': {
@@ -86,6 +92,54 @@ export function reduce(state: AppState, action: Action): AppState {
       const nodes = new Map(state.nodes);
       nodes.set(action.id, { ...node, load: 'failed' });
       return { ...state, nodes };
+    }
+    case 'fileSelected': {
+      if (action.gen !== state.generation) return state;
+      const node = state.nodes.get(action.id);
+      if (!node || node.kind !== 'file') return state;
+      // A known unreadable file is never read again (FR-5).
+      if (node.unreadable) return clearSelection(state);
+      if (state.selectedId === action.id) return state;
+      return {
+        ...state,
+        selectedId: action.id,
+        details: { kind: 'loading', id: action.id, requestId: action.requestId },
+      };
+    }
+    case 'folderSelected': {
+      const node = state.nodes.get(action.id);
+      if (!node || node.kind !== 'directory') return state;
+      if (node.load === 'failed') return clearSelection(state);
+      if (state.selectedId === action.id && state.details.kind === 'none') return state;
+      return { ...state, selectedId: action.id, details: NO_DETAILS };
+    }
+    case 'metaLoaded': {
+      if (action.gen !== state.generation) return state;
+      const { details } = state;
+      if (details.kind !== 'loading' || details.requestId !== action.requestId) return state;
+      return {
+        ...state,
+        details: {
+          kind: 'ready',
+          id: details.id,
+          requestId: details.requestId,
+          size: action.meta.size,
+          lastModified: action.meta.lastModified,
+        },
+      };
+    }
+    case 'metaFailed': {
+      // Dropped only when the root changed: the file is unreadable either way.
+      if (action.gen !== state.generation) return state;
+      const node = state.nodes.get(action.id);
+      if (!node || node.kind !== 'file') return state;
+      const { details } = state;
+      const current =
+        details.kind !== 'none' && details.id === action.id && details.requestId === action.requestId;
+      if (node.unreadable && !current) return state;
+      const nodes = node.unreadable ? state.nodes : new Map(state.nodes).set(action.id, { ...node, unreadable: true });
+      const next = { ...state, nodes };
+      return current ? { ...next, selectedId: null, details: NO_DETAILS } : next;
     }
   }
 }

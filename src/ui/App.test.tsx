@@ -225,3 +225,92 @@ describe('FR-3 FR-5 chevron and row structure', () => {
     expect(status?.querySelector('button')).toBeNull();
   });
 });
+
+describe('FR-3 FR-6 FR-7 FR-8 selecting from the tree', () => {
+  const hebrewName = 'דוח רבעוני מסכם עם שם ארוך מאוד שלא נכנס בשורה אחת.pdf';
+
+  async function setup(root: ReturnType<typeof dir>) {
+    const source = createFakeSource();
+    const controller = createController(source);
+    const toggle = vi.spyOn(controller, 'toggle');
+    const select = vi.spyOn(controller, 'select');
+    source.queuePick('project', root);
+    const view = render(<App controller={controller} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: TEXT.openFolder }));
+    await screen.findByText('src');
+    return { ...view, user, controller, toggle, select, source };
+  }
+
+  function nameButton(container: HTMLElement, name: string): HTMLElement {
+    const row = [...container.querySelectorAll('.tree-row')].find(
+      (r) => r.querySelector('.tree-name')?.textContent === name,
+    );
+    if (!row) throw new Error(`no row ${name}`);
+    return row.querySelector('.tree-name-button') as HTMLElement;
+  }
+
+  function panelPairs(container: HTMLElement): string[][] {
+    return [...container.querySelectorAll('.details-panel .details-row')].map((r) => [
+      r.querySelector('dt')?.textContent ?? '',
+      r.querySelector('dd')?.textContent ?? '',
+    ]);
+  }
+
+  it('selects a file from its name: Loading… first, then Name/Type/Size/Modified in order (AC-1, AC-11)', async () => {
+    const gate = deferred();
+    const { container, user, select, toggle } = await setup(
+      dir({ src: dir(), [hebrewName]: file({ size: 1500, lastModified: null, gate: gate.promise }) }),
+    );
+    await user.click(nameButton(container, hebrewName));
+    expect(select).toHaveBeenCalledWith(hebrewName);
+    expect(toggle).not.toHaveBeenCalled();
+
+    const row = nameButton(container, hebrewName).closest('.tree-row');
+    expect(row?.classList.contains('tree-row--selected')).toBe(true);
+    expect(container.querySelectorAll('.tree-row--selected')).toHaveLength(1);
+    expect(panelPairs(container)).toEqual([[TEXT.labelName, hebrewName]]);
+    expect(container.querySelector('.details-panel .status-row-text')?.textContent).toBe(TEXT.loading);
+
+    gate.resolve();
+    await screen.findByText('1.5 KB');
+    expect(panelPairs(container)).toEqual([
+      [TEXT.labelName, hebrewName],
+      [TEXT.labelType, 'PDF'],
+      [TEXT.labelSize, '1.5 KB'],
+      [TEXT.labelModified, TEXT.unknownValue],
+    ]);
+    const panelName = container.querySelector('.details-panel .details-name');
+    expect(panelName?.getAttribute('dir')).toBe('ltr');
+    expect(panelName?.classList.contains('bidi-isolate')).toBe(true);
+    expect(container.querySelector('.details-panel')?.textContent).not.toContain(TEXT.loading);
+  });
+
+  it('selects a folder from its name without opening it (AC-5)', async () => {
+    const { container, user, toggle, source } = await setup(dir({ src: dir({ 'a.ts': file() }) }));
+    await user.click(nameButton(container, 'src'));
+    expect(toggle).not.toHaveBeenCalled();
+    expect(screen.queryByText('a.ts')).toBeNull();
+    expect(source.calls.readFileMeta).toHaveLength(0);
+    expect(panelPairs(container)).toEqual([
+      [TEXT.labelName, 'src'],
+      [TEXT.labelType, TEXT.typeFolder],
+    ]);
+  });
+
+  it('returns to the prompt when a file read fails, and shows the message next to its name (AC-7)', async () => {
+    const { container, user } = await setup(dir({ src: dir(), 'locked.txt': file({ failMeta: true }) }));
+    await user.click(nameButton(container, 'locked.txt'));
+    expect(await screen.findByText(TEXT.unableToRead)).toBeTruthy();
+    expect(nameButton(container, 'locked.txt').textContent).toContain(TEXT.unableToRead);
+    expect(container.querySelector('.tree-row--selected')).toBeNull();
+    expect(screen.getByText(TEXT.selectFilePrompt)).toBeTruthy();
+  });
+
+  it('keeps no inline style in the panel', async () => {
+    const { container, user } = await setup(dir({ src: dir(), 'a.txt': file({ size: 10 }) }));
+    await user.click(nameButton(container, 'a.txt'));
+    await screen.findByText('10 B');
+    expect(container.querySelector('[style]')).toBeNull();
+  });
+});

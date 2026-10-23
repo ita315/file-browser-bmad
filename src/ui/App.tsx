@@ -16,7 +16,11 @@ export function App({ controller }: { controller: Controller }) {
     <div className="app">
       <TopBar view={topBar} onOpenFolder={() => void controller.openFolder()} />
       <main className="app-body">
-        <Tree rows={rows} onToggle={(id) => void controller.toggle(id)} />
+        <Tree
+          rows={rows}
+          onToggle={(id) => void controller.toggle(id)}
+          onSelect={(id) => void controller.select(id)}
+        />
         <DetailsPanel view={details} />
       </main>
     </div>

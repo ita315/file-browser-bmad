@@ -3,7 +3,15 @@ import type { NodeId } from '../lib/state.ts';
 import { TEXT } from '../lib/text.ts';
 import { ChevronIcon, FileIcon, FolderIcon } from './icons.tsx';
 
-export function TreeRow({ row, onToggle }: { row: Row; onToggle: (id: NodeId) => void }) {
+export function TreeRow({
+  row,
+  onToggle,
+  onSelect,
+}: {
+  row: Row;
+  onToggle: (id: NodeId) => void;
+  onSelect: (id: NodeId) => void;
+}) {
   if (row.type === 'status') {
     return (
       <div className="status-row" data-depth={row.depth}>
@@ -13,7 +21,7 @@ export function TreeRow({ row, onToggle }: { row: Row; onToggle: (id: NodeId) =>
     );
   }
   return (
-    <div className="tree-row" data-depth={row.depth}>
+    <div className={row.selected ? 'tree-row tree-row--selected' : 'tree-row'} data-depth={row.depth}>
       {row.chevron === 'none' ? (
         <span className="tree-chevron-spacer" />
       ) : (
@@ -21,7 +29,7 @@ export function TreeRow({ row, onToggle }: { row: Row; onToggle: (id: NodeId) =>
           <ChevronIcon open={row.chevron === 'expanded'} />
         </button>
       )}
-      <button type="button" className="tree-name-button">
+      <button type="button" className="tree-name-button" onClick={() => onSelect(row.id)}>
         {row.icon === 'folder' ? <FolderIcon /> : <FileIcon />}
         <span className="tree-name bidi-isolate" dir="ltr">
           {row.name}

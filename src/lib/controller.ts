@@ -11,11 +11,14 @@ export interface Controller {
   openFolder(): Promise<void>;
   /** FR-3: flips a folder open or closed; reads it on the first open in this generation. Never rejects. */
   toggle(id: NodeId): Promise<void>;
+  /** FR-3, FR-7, FR-8: selects an item; reads a file's details unless it is already selected or unreadable. Never rejects. */
+  select(id: NodeId): Promise<void>;
 }
 
 export function createController(source: DirectorySource): Controller {
   let state = createInitialState(source.isSupported());
   const listeners = new Set<() => void>();
+  let requestSeq = 0;
 
   function dispatch(action: Action): void {
     const next = reduce(state, action);
@@ -63,6 +66,26 @@ export function createController(source: DirectorySource): Controller {
       const gen = state.generation;
       dispatch({ type: 'loadStarted', gen, id });
       await loadFolder(gen, id, node.ref);
+    },
+    async select(id) {
+      const node = state.nodes.get(id);
+      if (!node) return;
+      if (node.kind === 'directory') {
+        dispatch({ type: 'folderSelected', id });
+        return;
+      }
+      const gen = state.generation;
+      const requestId = ++requestSeq;
+      const before = state;
+      dispatch({ type: 'fileSelected', gen, id, requestId });
+      // The reducer decided: already selected (same reference) or unreadable (cleared).
+      if (state === before || state.selectedId !== id) return;
+      try {
+        const meta = await source.readFileMeta(node.ref);
+        dispatch({ type: 'metaLoaded', gen, requestId, meta });
+      } catch {
+        dispatch({ type: 'metaFailed', gen, id, requestId });
+      }
     },
   };
 }

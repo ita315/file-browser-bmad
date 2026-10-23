@@ -1,5 +1,6 @@
 // AD-8: the UI renders only what these return.
 
+import { formatDate, formatSize, formatType } from './format.ts';
 import { ROOT_ID, statusKey } from './state.ts';
 import type { AppState, NodeId, TreeNode } from './state.ts';
 import { TEXT } from './text.ts';
@@ -25,8 +26,11 @@ export type StatusRow = { type: 'status'; key: string; depth: number; text: stri
 
 export type Row = ItemRow | StatusRow;
 
-/** Story 1.1 has no selection, so the panel is always empty. */
-export type DetailsView = { type: 'empty' };
+export type DetailsView =
+  | { type: 'empty' }
+  | { type: 'loading'; name: string }
+  | { type: 'file'; name: string; typeLabel: string; size: string; modified: string }
+  | { type: 'folder'; name: string };
 
 export function selectTopBar(state: AppState): TopBarView {
   if (!state.supported) return { mode: 'unsupported', text: TEXT.unsupportedBrowser };
@@ -78,6 +82,22 @@ export function selectVisibleRows(state: AppState): Row[] {
   return rows;
 }
 
-export function selectDetails(_state: AppState): DetailsView {
+export function selectDetails(state: AppState): DetailsView {
+  const { details } = state;
+  if (details.kind !== 'none') {
+    const node = state.nodes.get(details.id);
+    if (!node) return { type: 'empty' };
+    if (details.kind === 'loading') return { type: 'loading', name: node.name };
+    return {
+      type: 'file',
+      name: node.name,
+      typeLabel: formatType(node.name),
+      size: formatSize(details.size),
+      // Local time zone in the app; tests compare against formatDate itself.
+      modified: formatDate(details.lastModified),
+    };
+  }
+  const selected = state.selectedId === null ? undefined : state.nodes.get(state.selectedId);
+  if (selected?.kind === 'directory') return { type: 'folder', name: selected.name };
   return { type: 'empty' };
 }

@@ -141,6 +141,16 @@ body {
   stroke-width: var(--spacing-icon-stroke);
 }
 
+.tree-row--selected {
+  background: var(--color-selected);
+  box-shadow: inset var(--spacing-selection-bar) 0 0 var(--color-accent);
+}
+
+.tree-row--selected .tree-chevron,
+.tree-row--selected .tree-icon {
+  color: var(--color-text);
+}
+
 .tree-chevron-icon *,
 .tree-icon * {
   vector-effect: non-scaling-stroke;
@@ -197,4 +207,32 @@ body {
 .details-empty {
   margin: 0;
   color: var(--color-text-muted);
+}
+
+.details-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  margin: 0;
+}
+
+.details-row {
+  display: grid;
+  grid-template-columns: var(--spacing-details-label-width) minmax(0, 1fr);
+  column-gap: var(--spacing-3);
+}
+
+.details-label {
+  color: var(--color-text-muted);
+}
+
+.details-value {
+  margin: 0;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.details-loading {
+  margin: var(--spacing-2) 0 0;
 }
