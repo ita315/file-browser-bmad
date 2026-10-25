@@ -17,6 +17,24 @@
   },
   "overrides": [
     {
+      "files": ["src/**"],
+      "rules": {
+        "no-restricted-properties": [
+          "error",
+          {
+            "object": "file",
+            "property": "type",
+            "message": "Identify the file type by its extension, never by the browser-reported MIME type (.claude/rules/file-type-by-extension.md)."
+          },
+          {
+            "object": "blob",
+            "property": "type",
+            "message": "Identify the file type by its extension, never by the browser-reported MIME type (.claude/rules/file-type-by-extension.md)."
+          }
+        ]
+      }
+    },
+    {
       "files": ["src/lib/**"],
       "rules": {
         "no-restricted-imports": [
