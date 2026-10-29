@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createController } from './controller.ts';
 import { formatDate } from './format.ts';
-import { selectDetails, selectVisibleRows } from './selectors.ts';
+import { selectDetails, selectPreview, selectVisibleRows } from './selectors.ts';
 import type { ItemRow } from './selectors.ts';
 import type { Entry, SourceRef } from './source.ts';
 import { ROOT_ID } from './state.ts';
@@ -798,5 +798,143 @@ describe('FR-1 FR-6 root replacement clears the selection (AC-10)', () => {
     await done;
     expect(controller.getState()).toBe(afterPick);
     expect(itemRow(afterPick, 'a.txt').unreadable).toBe(false);
+  });
+});
+
+describe('image preview: reading the content', () => {
+  it('reads an image alongside its details: loading first, then the image (photo.JPG)', async () => {
+    const gate = deferred();
+    const content = new Blob(['jpeg bytes']);
+    const photo = file({ content, readGate: gate.promise });
+    const { source, controller } = await pickRoot(dir({ 'photo.JPG': photo }));
+
+    const done = controller.select('photo.JPG');
+    expect(selectPreview(controller.getState())).toEqual({ type: 'loading' });
+    expect(source.calls.readFile).toEqual([photo]);
+    expect(source.calls.readFileMeta).toEqual([photo]);
+
+    gate.resolve();
+    await done;
+    const state = controller.getState();
+    expect(state.preview).toMatchObject({ kind: 'ready', id: 'photo.JPG', blob: content });
+    expect(selectPreview(state)).toEqual({ type: 'image', blob: content, mime: 'image/jpeg', held: false });
+    expect(selectDetails(state)).toMatchObject({ type: 'file', name: 'photo.JPG', typeLabel: 'JPG' });
+  });
+
+  it.each([
+    ['notes.txt', file()],
+    ['.png', file()],
+  ])('does not read the content of %s and shows no preview', async (name, node) => {
+    const { source, controller } = await pickRoot(dir({ [name]: node }));
+    await controller.select(name);
+    expect(source.calls.readFile).toEqual([]);
+    expect(source.calls.readFileMeta).toEqual([node]);
+    expect(selectPreview(controller.getState())).toEqual({ type: 'none' });
+  });
+
+  it('shows no preview for a folder or with nothing selected', async () => {
+    const { source, controller } = await pickRoot(dir({ 'pics.png': dir() }));
+    expect(selectPreview(controller.getState())).toEqual({ type: 'none' });
+    await controller.select('pics.png');
+    expect(source.calls.readFile).toEqual([]);
+    expect(selectPreview(controller.getState())).toEqual({ type: 'none' });
+  });
+
+  it('shows unavailable when readFile rejects but the details load', async () => {
+    const { controller } = await pickRoot(dir({ 'a.png': file({ size: 10, failRead: true }) }));
+    await expect(controller.select('a.png')).resolves.toBeUndefined();
+    const state = controller.getState();
+    expect(selectPreview(state)).toEqual({ type: 'unavailable' });
+    expect(selectDetails(state)).toMatchObject({ type: 'file', size: '10 B' });
+  });
+
+  it('removes the preview when readFileMeta fails, even if the content arrived first', async () => {
+    const metaGate = deferred();
+    const { controller } = await pickRoot(dir({ 'a.png': file({ failMeta: true, gate: metaGate.promise }) }));
+    const done = controller.select('a.png');
+    await flush();
+    expect(selectPreview(controller.getState()).type).toBe('image');
+    metaGate.resolve();
+    await done;
+    const state = controller.getState();
+    expect(state.selectedId).toBeNull();
+    expect(selectPreview(state)).toEqual({ type: 'none' });
+    expect(itemRow(state, 'a.png').unreadable).toBe(true);
+  });
+
+  it('removes the preview when readFileMeta fails before the content arrives, and drops the late content', async () => {
+    const readGate = deferred();
+    const { controller } = await pickRoot(dir({ 'a.png': file({ failMeta: true, readGate: readGate.promise }) }));
+    const done = controller.select('a.png');
+    await flush();
+    const afterFail = controller.getState();
+    expect(selectPreview(afterFail)).toEqual({ type: 'none' });
+    readGate.resolve();
+    await done;
+    expect(controller.getState()).toBe(afterFail);
+  });
+
+  it('A then B with A arriving last: shows only B', async () => {
+    const gateA = deferred();
+    const blobA = new Blob(['a']);
+    const blobB = new Blob(['b']);
+    const { controller } = await pickRoot(
+      dir({ 'a.png': file({ content: blobA, readGate: gateA.promise }), 'b.svg': file({ content: blobB }) }),
+    );
+    const doneA = controller.select('a.png');
+    await controller.select('b.svg');
+    const afterB = controller.getState();
+    expect(selectPreview(afterB)).toMatchObject({ type: 'image', blob: blobB, mime: 'image/svg+xml' });
+
+    gateA.resolve();
+    await doneA;
+    expect(controller.getState()).toBe(afterB);
+  });
+
+  it('A then a text file with A arriving last: shows no preview', async () => {
+    const gateA = deferred();
+    const { controller } = await pickRoot(dir({ 'a.png': file({ readGate: gateA.promise }), 'b.txt': file() }));
+    const doneA = controller.select('a.png');
+    await controller.select('b.txt');
+    const afterB = controller.getState();
+    gateA.resolve();
+    await doneA;
+    expect(controller.getState()).toBe(afterB);
+    expect(selectPreview(afterB)).toEqual({ type: 'none' });
+  });
+
+  it('selecting a folder removes the preview and drops the late content', async () => {
+    const gate = deferred();
+    const { controller } = await pickRoot(dir({ src: dir(), 'a.png': file({ readGate: gate.promise }) }));
+    const done = controller.select('a.png');
+    await controller.select('src');
+    const afterFolder = controller.getState();
+    expect(selectPreview(afterFolder)).toEqual({ type: 'none' });
+    gate.resolve();
+    await done;
+    expect(controller.getState()).toBe(afterFolder);
+  });
+
+  it('picking a new root removes the preview and drops the late content', async () => {
+    const gate = deferred();
+    const root = dir({ 'a.png': file({ readGate: gate.promise }) });
+    const { source, controller } = await pickRoot(root);
+    const done = controller.select('a.png');
+    source.queuePick('project', root);
+    await controller.openFolder();
+    const afterPick = controller.getState();
+    expect(selectPreview(afterPick)).toEqual({ type: 'none' });
+    gate.resolve();
+    await done;
+    expect(controller.getState()).toBe(afterPick);
+  });
+
+  it('does not read the content again when the selected image is selected again', async () => {
+    const { source, controller } = await pickRoot(dir({ 'a.png': file() }));
+    await controller.select('a.png');
+    const before = controller.getState();
+    await controller.select('a.png');
+    expect(controller.getState()).toBe(before);
+    expect(source.calls.readFile).toHaveLength(1);
   });
 });

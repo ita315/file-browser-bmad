@@ -50,6 +50,8 @@
   --spacing-icon: 14px;
   --spacing-icon-stroke: 1.5px;
   --spacing-details-label-width: 80px;
+  --spacing-details-width: 320px;
+  --spacing-preview-min-width: 480px;
   --spacing-border-width: 1px;
   --spacing-selection-bar: 3px;
   --spacing-focus-ring: 2px;

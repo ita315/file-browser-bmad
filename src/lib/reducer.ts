@@ -1,10 +1,11 @@
 // The pure reducer (AD-3). A dropped action returns the same reference.
 // All staleness checks live here (AD-5).
 
+import { previewOf } from './fileKinds.ts';
 import type { Entry } from './source.ts';
 import { compareEntries } from './sort.ts';
-import { NO_DETAILS, ROOT_ID, childId } from './state.ts';
-import type { Action, AppState, NodeId, TreeNode } from './state.ts';
+import { NO_DETAILS, NO_PREVIEW, ROOT_ID, childId } from './state.ts';
+import type { Action, AppState, NodeId, Preview, SettledPreview, TreeNode } from './state.ts';
 
 function newNode(id: NodeId, entry: Entry, load: TreeNode['load']): TreeNode {
   return {
@@ -46,8 +47,28 @@ function isStaleLoad(state: AppState, gen: number, id: NodeId): boolean {
 
 /** Clears the selection; the same reference when nothing is selected. */
 function clearSelection(state: AppState): AppState {
-  if (state.selectedId === null && state.details.kind === 'none') return state;
-  return { ...state, selectedId: null, details: NO_DETAILS };
+  if (state.selectedId === null && state.details.kind === 'none' && state.preview.kind === 'none') return state;
+  return { ...state, selectedId: null, details: NO_DETAILS, preview: NO_PREVIEW };
+}
+
+/** What stays on screen while a new preview loads: the last settled one, kept across A→B→C. */
+function settledOf(preview: Preview): SettledPreview | null {
+  switch (preview.kind) {
+    case 'none':
+      return null;
+    case 'loading':
+      return preview.shown;
+    case 'ready':
+    case 'failed':
+      return preview;
+  }
+}
+
+/** The loading preview this content belongs to, or null when the content is stale. */
+function currentPreview(state: AppState, gen: number, requestId: number): Extract<Preview, { kind: 'loading' }> | null {
+  if (gen !== state.generation) return null;
+  const { preview } = state;
+  return preview.kind === 'loading' && preview.requestId === requestId ? preview : null;
 }
 
 export function reduce(state: AppState, action: Action): AppState {
@@ -61,6 +82,7 @@ export function reduce(state: AppState, action: Action): AppState {
         expanded: new Set([ROOT_ID]),
         selectedId: null,
         details: NO_DETAILS,
+        preview: NO_PREVIEW,
       };
     }
     case 'toggled': {
@@ -104,14 +126,19 @@ export function reduce(state: AppState, action: Action): AppState {
         ...state,
         selectedId: action.id,
         details: { kind: 'loading', id: action.id, requestId: action.requestId },
+        preview: previewOf(node.name)
+          ? { kind: 'loading', id: action.id, requestId: action.requestId, shown: settledOf(state.preview) }
+          : NO_PREVIEW,
       };
     }
     case 'folderSelected': {
       const node = state.nodes.get(action.id);
       if (!node || node.kind !== 'directory') return state;
       if (node.load === 'failed') return clearSelection(state);
-      if (state.selectedId === action.id && state.details.kind === 'none') return state;
-      return { ...state, selectedId: action.id, details: NO_DETAILS };
+      if (state.selectedId === action.id && state.details.kind === 'none' && state.preview.kind === 'none') {
+        return state;
+      }
+      return { ...state, selectedId: action.id, details: NO_DETAILS, preview: NO_PREVIEW };
     }
     case 'metaLoaded': {
       if (action.gen !== state.generation) return state;
@@ -139,7 +166,17 @@ export function reduce(state: AppState, action: Action): AppState {
       if (node.unreadable && !current) return state;
       const nodes = node.unreadable ? state.nodes : new Map(state.nodes).set(action.id, { ...node, unreadable: true });
       const next = { ...state, nodes };
-      return current ? { ...next, selectedId: null, details: NO_DETAILS } : next;
+      return current ? { ...next, selectedId: null, details: NO_DETAILS, preview: NO_PREVIEW } : next;
+    }
+    case 'previewLoaded': {
+      const preview = currentPreview(state, action.gen, action.requestId);
+      if (!preview) return state;
+      return { ...state, preview: { kind: 'ready', id: preview.id, requestId: preview.requestId, blob: action.blob } };
+    }
+    case 'previewFailed': {
+      const preview = currentPreview(state, action.gen, action.requestId);
+      if (!preview) return state;
+      return { ...state, preview: { kind: 'failed', id: preview.id, requestId: preview.requestId } };
     }
   }
 }

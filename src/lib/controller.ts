@@ -11,7 +11,10 @@ export interface Controller {
   openFolder(): Promise<void>;
   /** FR-3: flips a folder open or closed; reads it on the first open in this generation. Never rejects. */
   toggle(id: NodeId): Promise<void>;
-  /** FR-3, FR-7, FR-8: selects an item; reads a file's details unless it is already selected or unreadable. Never rejects. */
+  /**
+   * FR-3, FR-7, FR-8: selects an item; reads a file's details unless it is already selected or unreadable,
+   * and an image's content alongside them. Never rejects.
+   */
   select(id: NodeId): Promise<void>;
 }
 
@@ -80,12 +83,28 @@ export function createController(source: DirectorySource): Controller {
       dispatch({ type: 'fileSelected', gen, id, requestId });
       // The reducer decided: already selected (same reference) or unreadable (cleared).
       if (state === before || state.selectedId !== id) return;
-      try {
-        const meta = await source.readFileMeta(node.ref);
-        dispatch({ type: 'metaLoaded', gen, requestId, meta });
-      } catch {
-        dispatch({ type: 'metaFailed', gen, id, requestId });
+      // The reducer also decided whether this file has a preview to read.
+      const wantsContent = state.preview.kind === 'loading' && state.preview.requestId === requestId;
+
+      async function readMeta(ref: SourceRef): Promise<void> {
+        try {
+          const meta = await source.readFileMeta(ref);
+          dispatch({ type: 'metaLoaded', gen, requestId, meta });
+        } catch {
+          dispatch({ type: 'metaFailed', gen, id, requestId });
+        }
       }
+
+      async function readContent(ref: SourceRef): Promise<void> {
+        try {
+          const blob = await source.readFile(ref);
+          dispatch({ type: 'previewLoaded', gen, requestId, blob });
+        } catch {
+          dispatch({ type: 'previewFailed', gen, requestId });
+        }
+      }
+
+      await Promise.all([readMeta(node.ref), wantsContent ? readContent(node.ref) : undefined]);
     },
   };
 }

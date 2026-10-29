@@ -1,10 +1,12 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createController } from '../lib/controller.ts';
 import { TEXT } from '../lib/text.ts';
 import { createFakeSource, deferred, dir, file } from '../test/fakeSource.ts';
+import type { Deferred, FakeDir } from '../test/fakeSource.ts';
 import { App } from './App.tsx';
+import { PreviewPane } from './PreviewPane.tsx';
 
 afterEach(() => {
   cleanup();
@@ -312,5 +314,362 @@ describe('FR-3 FR-6 FR-7 FR-8 selecting from the tree', () => {
     await user.click(nameButton(container, 'a.txt'));
     await screen.findByText('10 B');
     expect(container.querySelector('[style]')).toBeNull();
+  });
+});
+
+describe('image preview pane', () => {
+  // jsdom has no object URLs: record what is created and revoked.
+  let created: Blob[] = [];
+  let revoked: string[] = [];
+  // jsdom has no decode(): it resolves at once, or waits for the test when `manualDecode`.
+  let decodes: { src: string | null; gate: Deferred }[] = [];
+  let manualDecode = false;
+  const originalDecode = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'decode');
+
+  beforeEach(() => {
+    created = [];
+    revoked = [];
+    decodes = [];
+    manualDecode = false;
+    HTMLImageElement.prototype.decode = function decode(this: HTMLImageElement) {
+      if (!manualDecode) return Promise.resolve();
+      const gate = deferred();
+      decodes.push({ src: this.getAttribute('src'), gate });
+      return gate.promise;
+    };
+    URL.createObjectURL = vi.fn((content: Blob | MediaSource) => {
+      created.push(content as Blob);
+      return `blob:test/${created.length}`;
+    });
+    URL.revokeObjectURL = vi.fn((url: string) => {
+      revoked.push(url);
+    });
+  });
+
+  afterEach(() => {
+    Reflect.deleteProperty(URL, 'createObjectURL');
+    Reflect.deleteProperty(URL, 'revokeObjectURL');
+    if (originalDecode) Object.defineProperty(HTMLImageElement.prototype, 'decode', originalDecode);
+    else Reflect.deleteProperty(HTMLImageElement.prototype, 'decode');
+  });
+
+  /** Lets pending promises and the effects they trigger run. */
+  const flush = () => act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+  const shownSrc = (container: HTMLElement) =>
+    [...container.querySelectorAll('.preview-pane img')].map((img) => img.getAttribute('src'));
+
+  async function setup(root: FakeDir) {
+    const source = createFakeSource();
+    const controller = createController(source);
+    source.queuePick('project', root);
+    const view = render(<App controller={controller} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: TEXT.openFolder }));
+    await waitFor(() => expect(view.container.querySelectorAll('.tree-row').length).toBeGreaterThan(1));
+    const clickName = async (name: string) => {
+      const row = [...view.container.querySelectorAll('.tree-row')].find(
+        (r) => r.querySelector('.tree-name')?.textContent === name,
+      );
+      if (!row) throw new Error(`no row ${name}`);
+      await user.click(row.querySelector('.tree-name-button') as HTMLElement);
+    };
+    return { ...view, clickName, source };
+  }
+
+  const pane = (container: HTMLElement) => container.querySelector('.app-side .preview-pane');
+  const withPreview = (container: HTMLElement) =>
+    container.querySelector('.app-side')?.classList.contains('app-side--with-preview') ?? false;
+
+  it('shows Loading… and then exactly one <img> with a blob: URL, next to the details (photo.JPG)', async () => {
+    const gate = deferred();
+    const { container, clickName } = await setup(
+      dir({ 'photo.JPG': file({ size: 1500, content: new Blob(['jpeg']), readGate: gate.promise }) }),
+    );
+    expect(withPreview(container)).toBe(false);
+    expect(pane(container)).toBeNull();
+
+    await clickName('photo.JPG');
+    expect(withPreview(container)).toBe(true);
+    expect(pane(container)?.textContent).toBe(TEXT.loading);
+    expect(pane(container)?.querySelector('img')).toBeNull();
+
+    gate.resolve();
+    await waitFor(() => expect(pane(container)?.querySelector('img')).not.toBeNull());
+    const images = container.querySelectorAll('.preview-pane img');
+    expect(images).toHaveLength(1);
+    expect(images[0].getAttribute('src')).toMatch(/^blob:/);
+    expect(container.querySelector('object, iframe, embed')).toBeNull();
+    expect(pane(container)?.textContent).toBe('');
+    expect(await created[0].text()).toBe('jpeg');
+    expect(created[0].type).toBe('image/jpeg');
+    expect(container.querySelector('.app-side .details-panel')?.textContent).toContain('1.5 KB');
+    expect(container.querySelector('[style]')).toBeNull();
+  });
+
+  it.each([
+    ['notes.txt', file()],
+    ['.png', file()],
+    ['pics.png', dir()],
+  ])('shows no preview column for %s', async (name, node) => {
+    const { container, clickName } = await setup(dir({ [name]: node }));
+    await clickName(name);
+    await waitFor(() => expect(container.querySelector('.details-panel .details-row')).not.toBeNull());
+    expect(pane(container)).toBeNull();
+    expect(withPreview(container)).toBe(false);
+    expect(created).toEqual([]);
+  });
+
+  it('wraps an svg in a Blob typed image/svg+xml from its extension', async () => {
+    const { container, clickName } = await setup(dir({ 'logo.svg': file({ content: new Blob(['<svg/>']) }) }));
+    await clickName('logo.svg');
+    await waitFor(() => expect(pane(container)?.querySelector('img')).not.toBeNull());
+    expect(created).toHaveLength(1);
+    expect(created[0].type).toBe('image/svg+xml');
+  });
+
+  it('shows Unable to display this file when the <img> fails after decoding, and resets on the next image', async () => {
+    const { container, clickName } = await setup(dir({ 'broken.png': file(), 'ok.png': file() }));
+    await clickName('broken.png');
+    await waitFor(() => expect(pane(container)?.querySelector('img')).not.toBeNull());
+    fireEvent.error(pane(container)!.querySelector('img')!);
+    expect(pane(container)?.querySelector('img')).toBeNull();
+    expect(pane(container)?.textContent).toBe(TEXT.unableToDisplay);
+
+    await clickName('ok.png');
+    await waitFor(() => expect(pane(container)?.querySelector('img')).not.toBeNull());
+    expect(pane(container)?.textContent).not.toContain(TEXT.unableToDisplay);
+  });
+
+  it('a message does not stick to the next image (no remount in between)', async () => {
+    const { container, rerender } = render(
+      <PreviewPane view={{ type: 'image', blob: new Blob(['a']), mime: 'image/png', held: false }} />,
+    );
+    await waitFor(() => expect(container.querySelector('img')).not.toBeNull());
+    fireEvent.error(container.querySelector('img')!);
+    expect(container.textContent).toBe(TEXT.unableToDisplay);
+    rerender(<PreviewPane view={{ type: 'image', blob: new Blob(['b']), mime: 'image/png', held: false }} />);
+    await waitFor(() => expect(container.querySelector('img')?.getAttribute('src')).toBe('blob:test/2'));
+    expect(container.textContent).not.toContain(TEXT.unableToDisplay);
+  });
+
+  it('A → B: A stays, with no Loading…, until B is decoded; then one <img> with B', async () => {
+    const gateB = deferred();
+    const { container, clickName } = await setup(
+      dir({ 'a.png': file({ content: new Blob(['A']) }), 'b.png': file({ content: new Blob(['B']), readGate: gateB.promise }) }),
+    );
+    manualDecode = true;
+    await clickName('a.png');
+    await waitFor(() => expect(decodes).toHaveLength(1));
+    expect(pane(container)?.textContent).toBe(TEXT.loading);
+    expect(shownSrc(container)).toEqual([]);
+    decodes[0].gate.resolve();
+    await waitFor(() => expect(shownSrc(container)).toEqual(['blob:test/1']));
+
+    await clickName('b.png');
+    expect(shownSrc(container)).toEqual(['blob:test/1']);
+    expect(pane(container)?.textContent).toBe('');
+    gateB.resolve();
+    await waitFor(() => expect(decodes).toHaveLength(2));
+    expect(decodes[1].src).toBe('blob:test/2');
+    expect(await created[1].text()).toBe('B');
+    expect(shownSrc(container)).toEqual(['blob:test/1']);
+    expect(pane(container)?.textContent).toBe('');
+    expect(revoked).toEqual([]);
+
+    decodes[1].gate.resolve();
+    await waitFor(() => expect(shownSrc(container)).toEqual(['blob:test/2']));
+    expect(revoked).toEqual(['blob:test/1']);
+  });
+
+  it('shows Unable to display this file when decode() fails, and frees its URL', async () => {
+    const { container, clickName } = await setup(dir({ 'broken.png': file() }));
+    manualDecode = true;
+    await clickName('broken.png');
+    await waitFor(() => expect(decodes).toHaveLength(1));
+    decodes[0].gate.reject(new Error('EncodingError'));
+    await screen.findByText(TEXT.unableToDisplay);
+    expect(shownSrc(container)).toEqual([]);
+    expect(revoked).toEqual(['blob:test/1']);
+  });
+
+  it('message → image: the message stays until the next image is decoded', async () => {
+    const gateB = deferred();
+    const { container, clickName } = await setup(
+      dir({ 'a.png': file({ failRead: true }), 'b.png': file({ readGate: gateB.promise }) }),
+    );
+    manualDecode = true;
+    await clickName('a.png');
+    await screen.findByText(TEXT.unableToDisplay);
+
+    await clickName('b.png');
+    expect(pane(container)?.textContent).toBe(TEXT.unableToDisplay);
+    gateB.resolve();
+    await waitFor(() => expect(decodes).toHaveLength(1));
+    expect(pane(container)?.textContent).toBe(TEXT.unableToDisplay);
+    expect(shownSrc(container)).toEqual([]);
+
+    decodes[0].gate.resolve();
+    await waitFor(() => expect(shownSrc(container)).toEqual(['blob:test/1']));
+    expect(pane(container)?.textContent).toBe('');
+  });
+
+  it('a failed decode is replaced by the next image only once that one is decoded', async () => {
+    const { container, clickName } = await setup(dir({ 'a.png': file(), 'b.png': file() }));
+    manualDecode = true;
+    await clickName('a.png');
+    await waitFor(() => expect(decodes).toHaveLength(1));
+    decodes[0].gate.reject(new Error('EncodingError'));
+    await screen.findByText(TEXT.unableToDisplay);
+
+    await clickName('b.png');
+    await waitFor(() => expect(decodes).toHaveLength(2));
+    expect(pane(container)?.textContent).toBe(TEXT.unableToDisplay);
+    decodes[1].gate.resolve();
+    await waitFor(() => expect(shownSrc(container)).toEqual(['blob:test/2']));
+    expect(pane(container)?.textContent).toBe('');
+  });
+
+  it('image → failed read → image: the message replaces A at once (A freed) and stays until C is decoded', async () => {
+    const gateC = deferred();
+    const { container, clickName } = await setup(
+      dir({ 'a.png': file(), 'b.png': file({ failRead: true }), 'c.png': file({ readGate: gateC.promise }) }),
+    );
+    manualDecode = true;
+    await clickName('a.png');
+    await waitFor(() => expect(decodes).toHaveLength(1));
+    decodes[0].gate.resolve();
+    await waitFor(() => expect(shownSrc(container)).toEqual(['blob:test/1']));
+
+    await clickName('b.png');
+    await screen.findByText(TEXT.unableToDisplay);
+    expect(shownSrc(container)).toEqual([]);
+    expect(revoked).toEqual(['blob:test/1']);
+
+    await clickName('c.png');
+    gateC.resolve();
+    await waitFor(() => expect(decodes).toHaveLength(2));
+    expect(shownSrc(container)).toEqual([]);
+    expect(pane(container)?.textContent).toBe(TEXT.unableToDisplay);
+
+    decodes[1].gate.resolve();
+    await waitFor(() => expect(shownSrc(container)).toEqual(['blob:test/2']));
+    expect(pane(container)?.textContent).toBe('');
+  });
+
+  it('X → B → C with B decoded late: B is never shown, X stays until C is decoded', async () => {
+    const gateC = deferred();
+    const { container, clickName } = await setup(
+      dir({ 'x.png': file(), 'b.png': file(), 'c.png': file({ readGate: gateC.promise }) }),
+    );
+    manualDecode = true;
+    await clickName('x.png');
+    await waitFor(() => expect(decodes).toHaveLength(1));
+    decodes[0].gate.resolve();
+    await waitFor(() => expect(shownSrc(container)).toEqual(['blob:test/1']));
+
+    await clickName('b.png');
+    await waitFor(() => expect(decodes).toHaveLength(2));
+    await clickName('c.png');
+    decodes[1].gate.resolve();
+    await flush();
+    expect(shownSrc(container)).toEqual(['blob:test/1']);
+    expect(revoked).toEqual(['blob:test/2']);
+
+    gateC.resolve();
+    await waitFor(() => expect(decodes).toHaveLength(3));
+    expect(shownSrc(container)).toEqual(['blob:test/1']);
+    expect(pane(container)?.textContent).toBe('');
+    decodes[2].gate.resolve();
+    await waitFor(() => expect(shownSrc(container)).toEqual(['blob:test/3']));
+    expect(revoked).toEqual(['blob:test/2', 'blob:test/1']);
+  });
+
+  it('a decode still pending when the column goes away frees its URL when it ends', async () => {
+    const { container, clickName } = await setup(dir({ src: dir(), 'a.png': file() }));
+    manualDecode = true;
+    await clickName('a.png');
+    await waitFor(() => expect(decodes).toHaveLength(1));
+    await clickName('src');
+    expect(pane(container)).toBeNull();
+    decodes[0].gate.resolve();
+    await flush();
+    expect(revoked).toEqual(['blob:test/1']);
+    expect(pane(container)).toBeNull();
+  });
+
+  it('shows Unable to display this file when readFile rejects but the details load', async () => {
+    const { container, clickName } = await setup(dir({ 'a.png': file({ size: 10, failRead: true }) }));
+    await clickName('a.png');
+    await screen.findByText(TEXT.unableToDisplay);
+    expect(pane(container)?.querySelector('img')).toBeNull();
+    expect(container.querySelector('.details-panel')?.textContent).toContain('10 B');
+  });
+
+  it('removes the column when the file turns out unreadable', async () => {
+    const gate = deferred();
+    const { container, clickName } = await setup(dir({ 'a.png': file({ failMeta: true, gate: gate.promise }) }));
+    await clickName('a.png');
+    await waitFor(() => expect(pane(container)?.querySelector('img')?.getAttribute('src')).toBe('blob:test/1'));
+    expect(created).toHaveLength(1);
+    expect(revoked).toEqual([]);
+
+    gate.resolve();
+    await screen.findByText(TEXT.unableToRead);
+    expect(pane(container)).toBeNull();
+    expect(withPreview(container)).toBe(false);
+    expect(revoked).toEqual(['blob:test/1']);
+  });
+
+  it('A then B with A arriving last: shows only B', async () => {
+    const gateA = deferred();
+    const { container, clickName } = await setup(
+      dir({ 'a.png': file({ content: new Blob(['A']), readGate: gateA.promise }), 'b.png': file({ content: new Blob(['B']) }) }),
+    );
+    await clickName('a.png');
+    await clickName('b.png');
+    await waitFor(() => expect(pane(container)?.querySelector('img')).not.toBeNull());
+    gateA.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(created).toHaveLength(1);
+    expect(await created[0].text()).toBe('B');
+    expect(container.querySelectorAll('.preview-pane img')).toHaveLength(1);
+  });
+
+  it('revokes the old object URL when the image changes, and the last one when the column goes away', async () => {
+    const { container, clickName } = await setup(dir({ src: dir(), 'a.png': file(), 'b.gif': file() }));
+    await clickName('a.png');
+    await waitFor(() => expect(pane(container)?.querySelector('img')?.getAttribute('src')).toBe('blob:test/1'));
+    expect(revoked).toEqual([]);
+
+    await clickName('b.gif');
+    await waitFor(() => expect(pane(container)?.querySelector('img')?.getAttribute('src')).toBe('blob:test/2'));
+    expect(revoked).toEqual(['blob:test/1']);
+
+    await clickName('src');
+    expect(pane(container)).toBeNull();
+    expect(withPreview(container)).toBe(false);
+    expect(revoked).toEqual(['blob:test/1', 'blob:test/2']);
+  });
+
+  it('removes the column and drops late content when a new root is picked', async () => {
+    const gate = deferred();
+    const source = createFakeSource();
+    const controller = createController(source);
+    const root = dir({ 'a.png': file({ readGate: gate.promise }) });
+    source.queuePick('project', root);
+    const { container } = render(<App controller={controller} />);
+    await controller.openFolder();
+    void controller.select('a.png');
+    await screen.findByText(TEXT.loading);
+    expect(withPreview(container)).toBe(true);
+
+    source.queuePick('other', dir({ 'b.txt': file() }));
+    await controller.openFolder();
+    await screen.findByText('b.txt');
+    expect(pane(container)).toBeNull();
+    gate.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(pane(container)).toBeNull();
+    expect(created).toEqual([]);
   });
 });

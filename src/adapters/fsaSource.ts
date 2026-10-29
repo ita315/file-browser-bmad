@@ -38,5 +38,10 @@ export function createFsaSource(): DirectorySource {
       const blob = await fromRef<FileSystemFileHandle>(file).getFile();
       return { size: blob.size, lastModified: blob.lastModified };
     },
+
+    async readFile(file: SourceRef): Promise<Blob> {
+      // The File itself; its browser-reported MIME type is never read.
+      return fromRef<FileSystemFileHandle>(file).getFile();
+    },
   };
 }

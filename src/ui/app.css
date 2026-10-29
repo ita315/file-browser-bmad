@@ -47,6 +47,30 @@ body {
   min-height: 0;
 }
 
+/* Details and, for an image, the preview. With a preview, the area is side by side when it fits
+   details-width + preview-min-width, else stacked. No media query: px stays in tokens and var()
+   does not work in a query condition. --x is non-negative when wide; each value flips through
+   clamp (spec-image-preview-pane, Design Notes). */
+.app-side {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  container-type: size;
+}
+
+.app-side--with-preview > * {
+  --x: calc((100cqw - (var(--spacing-details-width) + var(--spacing-preview-min-width))) * 100000);
+}
+
+/* overflow-y: auto would otherwise zero the min-height and shrink the details to one line. */
+.app-side--with-preview .details-panel {
+  box-sizing: border-box;
+  flex: 0 0 clamp(0%, var(--x) + 100cqh, 100cqh);
+  width: clamp(var(--spacing-details-width), var(--spacing-details-width) - var(--x), 100cqw);
+  min-height: min-content;
+}
+
 /* top-bar */
 .top-bar {
   display: flex;
@@ -235,4 +259,31 @@ body {
 
 .details-loading {
   margin: var(--spacing-2) 0 0;
+}
+
+/* preview-pane: border-width takes no %, and an invalid value with var() falls back to medium. */
+.preview-pane {
+  position: relative;
+  box-sizing: border-box;
+  flex: 1 1 0;
+  min-height: 0;
+  margin-top: clamp(-100cqh, -100cqh - var(--x), 0%);
+  margin-left: clamp(0%, var(--spacing-details-width) + var(--x), var(--spacing-details-width));
+  padding: var(--spacing-4);
+  border: 0 solid var(--color-border);
+  border-left-width: clamp(0 * var(--spacing-border-width), var(--spacing-border-width) + var(--x), var(--spacing-border-width));
+  border-top-width: clamp(0 * var(--spacing-border-width), 0 * var(--spacing-border-width) - var(--x), var(--spacing-border-width));
+  background: var(--color-background);
+}
+
+.preview-image {
+  position: absolute;
+  inset: var(--spacing-4);
+  width: calc(100% - 2 * var(--spacing-4));
+  height: calc(100% - 2 * var(--spacing-4));
+  object-fit: contain;
+}
+
+.preview-message {
+  margin: 0;
 }

@@ -1,8 +1,9 @@
 // AD-8: the UI renders only what these return.
 
+import { previewOf } from './fileKinds.ts';
 import { formatDate, formatSize, formatType } from './format.ts';
 import { ROOT_ID, statusKey } from './state.ts';
-import type { AppState, NodeId, TreeNode } from './state.ts';
+import type { AppState, NodeId, SettledPreview, TreeNode } from './state.ts';
 import { TEXT } from './text.ts';
 
 export type TopBarView =
@@ -31,6 +32,16 @@ export type DetailsView =
   | { type: 'loading'; name: string }
   | { type: 'file'; name: string; typeLabel: string; size: string; modified: string }
   | { type: 'folder'; name: string };
+
+/**
+ * `held`: the selection moved on and this is the previous content, kept on screen
+ * until the new one is ready. The UI shows it but starts nothing new for it.
+ */
+export type PreviewView =
+  | { type: 'none' }
+  | { type: 'loading' }
+  | { type: 'image'; blob: Blob; mime: string; held: boolean }
+  | { type: 'unavailable' };
 
 export function selectTopBar(state: AppState): TopBarView {
   if (!state.supported) return { mode: 'unsupported', text: TEXT.unsupportedBrowser };
@@ -100,4 +111,23 @@ export function selectDetails(state: AppState): DetailsView {
   const selected = state.selectedId === null ? undefined : state.nodes.get(state.selectedId);
   if (selected?.kind === 'directory') return { type: 'folder', name: selected.name };
   return { type: 'empty' };
+}
+
+function settledView(state: AppState, settled: SettledPreview, held: boolean): PreviewView | null {
+  const node = state.nodes.get(settled.id);
+  const kind = node ? previewOf(node.name) : null;
+  if (!kind) return null;
+  if (settled.kind === 'failed') return { type: 'unavailable' };
+  return { type: kind.kind, blob: settled.blob, mime: kind.mime, held };
+}
+
+export function selectPreview(state: AppState): PreviewView {
+  const { preview } = state;
+  if (preview.kind === 'none') return { type: 'none' };
+  const node = state.nodes.get(preview.id);
+  if (!node || !previewOf(node.name)) return { type: 'none' };
+  if (preview.kind === 'loading') {
+    return (preview.shown && settledView(state, preview.shown, true)) ?? { type: 'loading' };
+  }
+  return settledView(state, preview, false) ?? { type: 'none' };
 }

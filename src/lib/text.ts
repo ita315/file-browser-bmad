@@ -7,6 +7,7 @@ export const TEXT = {
   loading: 'Loading…',
   emptyFolder: 'Empty folder',
   unableToRead: 'Unable to read this item',
+  unableToDisplay: 'Unable to display this file',
   labelName: 'Name',
   labelType: 'Type',
   labelSize: 'Size',
