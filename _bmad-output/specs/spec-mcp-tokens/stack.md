@@ -16,7 +16,7 @@
 ## חוזה MCP
 | סוג | שם / URI | קלט (zod) | פלט |
 |---|---|---|---|
-| tool | `get_token` | `name: z.string().regex(/^--[a-z0-9-]+$/)`. ה-description אומר: "השתמש לפני שכותבים ערך עיצובי ב-CSS, ועדיף על קריאה ישירה של tokens.css". יש בו גם דוגמאות: `--color-accent`, ‏`--spacing-2` | הערך כטקסט, או `isError: true` |
+| tool | `get_token` | `name: z.string().regex(/^--[a-z0-9-]+$/)`. ה-description אומר: "השתמש בכל פעם שצריך לדעת את הערך של טוקן, למשל כשעונים על 'כמה מעוגלות הפינות של כפתור', ועדיף על קריאה ישירה של tokens.css". יש בו גם דוגמאות: `--color-accent`, ‏`--spacing-2` | הערך כטקסט, או `isError: true` |
 | resource | `tokens://all` | אין | ‏`application/json`: ‏`[{ name, value, category }]` |
 | prompt | `style-with-tokens` | `file: z.string().regex(/^src\/.+\.css$/)`. ארגומנטים של prompt הם תמיד מחרוזות | הודעת user עם הנחיית AD-9 ורשימת הטוקנים |
 

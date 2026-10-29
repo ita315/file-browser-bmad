@@ -36,7 +36,7 @@ sources: []
 - **בדיוק אחד מכל סוג:** tool אחד, ‏resource אחד, ‏prompt אחד.
 - **בלי שלב build:** השרת רץ עם `node --experimental-strip-types`. לכן מותר רק תחביר TypeScript שאפשר פשוט למחוק (בלי `enum`, ‏`namespace` ו-parameter properties), וכל ייבוא מקומי כולל סיומת `.ts`.
 - **הגדרה מהסביבה:** ההגדרה היחידה היא `TOKENS_FILE`, עם ברירת מחדל `src/ui/tokens.css`. אין סודות ב-`.mcp.json`.
-- **description של `get_token`:** כותב במפורש מתי להשתמש ב-tool: לפני שכותבים ערך עיצובי ב-CSS. הוא גם אומר שעדיף להשתמש בו ולא לקרוא את `tokens.css` ישירות. בלי זה המודל לא יבחר ב-tool מעצמו.
+- **description של `get_token`:** כותב במפורש מתי להשתמש ב-tool: בכל פעם שצריך לדעת את הערך של טוקן, למשל כשעונים על שאלה כמו "כמה מעוגלות הפינות של כפתור". הוא גם אומר שעדיף להשתמש בו ולא לקרוא את `tokens.css` ישירות. בלי זה המודל לא יבחר ב-tool מעצמו.
 - **קריאה מחדש:** הקובץ נקרא מחדש בכל קריאה ל-tool, ל-resource או ל-prompt, ואין cache. כשהקובץ חסר, או כשהשם לא קיים, חוזרת תוצאה עם `isError: true`, והשרת לא קורס.
 - **`npm run check` ירוק בכל commit:** הבדיקה כוללת tsc, ‏oxlint ו-vitest על קוד השרת (כלל `check-green-every-commit`).
 

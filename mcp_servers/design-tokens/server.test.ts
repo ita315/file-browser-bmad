@@ -108,7 +108,8 @@ describe('get_token', () => {
     const c = await connect(async () => css)
     const { tools } = await c.listTools()
     const description = tools[0].description ?? ''
-    expect(description).toContain('before writing any design value')
+    expect(description).toContain('whenever you need to know a token\'s value')
+    expect(description).not.toContain('before writing')
     expect(description).toContain('tokens.css directly')
     expect(description).toContain('--color-accent')
     expect(description).toContain('--spacing-2')

@@ -48,8 +48,8 @@ export function createServer(loadCss: LoadCss = loadTokensFile): McpServer {
       title: 'Get design token',
       description:
         'Returns the value of one design token from the project\'s src/ui/tokens.css. ' +
-        'Use it before writing any design value (color, font, size, spacing, radius) in CSS: ' +
-        'every design value in this project must come from a token (AD-9). ' +
+        'Use it whenever you need to know a token\'s value, ' +
+        'e.g. to answer "how rounded are button corners?". ' +
         'Prefer this tool over reading tokens.css directly. ' +
         'Pass the full custom-property name, e.g. "--color-accent" or "--spacing-2".',
       inputSchema: {

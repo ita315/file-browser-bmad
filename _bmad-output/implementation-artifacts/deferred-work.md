@@ -7,3 +7,11 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-mcp-tokens.md`
   summary: הנתיב `mcp_servers/design-tokens/server.ts` ב-`args` של `.mcp.json` יחסי, כך שאם Claude Code מפעיל את השרת מתת-תיקייה, ‏node לא ימצא את הסקריפט (maybe-false, אם נכון: medium).
   evidence: ‏`TOKENS_FILE` נפתר מול שורש הפרויקט, אבל נתיב הסקריפט נפתר מול ה-cwd. כדי להכריע: מפעילים `claude` מ-`src/` ובודקים ש-`/mcp` מראה את `design-tokens` במצב Connected.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-mcp-tokens-get-token-description.md`
+  summary: ה-description של `get_token` לא אומר איך מוצאים את שם הטוקן (למשל `tokens://all` או ה-`var(--…)` ב-`app.css`), ולכן המודל עלול עדיין לקרוא את `tokens.css` כדי למצוא שמות (maybe-false, אם נכון: medium).
+  evidence: ‏`get_token` מקבל רק שם מדויק. כדי להכריע: להריץ שוב את בדיקה ידנית 3 עם שאלה שלא מופיעה ב-description, ולבדוק אם Claude קורא את `tokens.css` לפני הקריאה ל-`get_token`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-mcp-tokens-get-token-description.md`
+  summary: ‏`.memlog.md` של spec-mcp-tokens (שורה 30) עדיין רושם את הטריגר הישן "לפני שכותבים ערך עיצובי ב-CSS", וצריך להוסיף שורת `(decision)` שמחליפה אותו.
+  evidence: ‏bmad-spec בונה מחדש מה-memlog, כך שעדכון הבא של ה-spec עלול להחזיר את הנוסח הישן.
