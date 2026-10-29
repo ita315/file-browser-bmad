@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Image preview layout</title>
+<!-- The real tokens and component styles, linked so the mockup never drifts from src. -->
+<link rel="stylesheet" href="../../../src/ui/tokens.css">
+<link rel="stylesheet" href="../../../src/ui/app.css">
+<style>
+  /* Proposed new tokens (spec-image-preview-pane). They go into tokens.css at implementation. */
+  :root {
+    --spacing-details-width: 320px;
+    --spacing-preview-min-width: 480px;
+  }
+
+  /* Proposed app.css additions: exactly the rules from the spec's Design Notes. */
+  .app-side {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    container-type: size;
+  }
+
+  .app-side--with-preview > * {
+    /* Non-negative = wide enough for details + preview side by side. */
+    --x: calc((100cqw - (var(--spacing-details-width) + var(--spacing-preview-min-width))) * 100000);
+  }
+
+  .app-side--with-preview .details-panel {
+    box-sizing: border-box;
+    flex: 0 0 clamp(0%, var(--x) + 100cqh, 100cqh);
+    width: clamp(var(--spacing-details-width), var(--spacing-details-width) - var(--x), 100cqw);
+    min-height: min-content;
+  }
+
+  .preview-pane {
+    position: relative;
+    box-sizing: border-box;
+    flex: 1 1 0;
+    min-height: 0;
+    margin-top: clamp(-100cqh, -100cqh - var(--x), 0%);
+    margin-left: clamp(0%, var(--spacing-details-width) + var(--x), var(--spacing-details-width));
+    border: 0 solid var(--color-border);
+    border-left-width: clamp(0 * var(--spacing-border-width), var(--spacing-border-width) + var(--x), var(--spacing-border-width));
+    border-top-width: clamp(0 * var(--spacing-border-width), 0 * var(--spacing-border-width) - var(--x), var(--spacing-border-width));
+    background: var(--color-background);
+  }
+
+  .preview-image {
+    position: absolute;
+    inset: var(--spacing-4);
+    width: calc(100% - 2 * var(--spacing-4));
+    height: calc(100% - 2 * var(--spacing-4));
+    object-fit: contain;
+  }
+
+  .preview-message {
+    margin: 0;
+    padding: var(--spacing-4) var(--spacing-5);
+  }
+
+  /* Mockup-only controls: not part of the app. */
+  .mock-controls {
+    position: fixed;
+    right: var(--spacing-3);
+    bottom: var(--spacing-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-1);
+    padding: var(--spacing-2) var(--spacing-3);
+    border: var(--spacing-border-width) dashed var(--color-text-muted);
+    border-radius: var(--rounded-md);
+    background: var(--color-surface-tree);
+    font-size: var(--typography-small-font-size);
+  }
+  .mock-controls b { color: var(--color-text-muted); }
+  .mock-controls label { display: flex; gap: var(--spacing-1); align-items: center; }
+</style>
+</head>
+<body>
+<div id="root">
+  <div class="app">
+    <header class="top-bar">
+      <button type="button" class="button-primary">Open folder…</button>
+      <span class="root-name bidi-isolate" dir="ltr">vacation-2026</span>
+    </header>
+    <main class="app-body">
+      <nav class="tree">
+        <div class="tree-row" data-depth="0">
+          <button type="button" class="tree-chevron"><svg class="tree-chevron-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button>
+          <button type="button" class="tree-name-button"><svg class="tree-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h3l1.5 2h4.5A1.5 1.5 0 0 1 14 6.5v5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 11.5z"/></svg><span class="tree-name bidi-isolate" dir="ltr">vacation-2026</span></button>
+        </div>
+        <div class="tree-row" data-depth="1">
+          <button type="button" class="tree-chevron"><svg class="tree-chevron-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg></button>
+          <button type="button" class="tree-name-button"><svg class="tree-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h3l1.5 2h4.5A1.5 1.5 0 0 1 14 6.5v5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 11.5z"/></svg><span class="tree-name bidi-isolate" dir="ltr">raw</span></button>
+        </div>
+        <div class="tree-row" data-depth="1" data-file="notes">
+          <span class="tree-chevron-spacer"></span>
+          <button type="button" class="tree-name-button"><svg class="tree-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2h5l3 3v9H4z"/><path d="M9 2v3h3"/></svg><span class="tree-name bidi-isolate" dir="ltr">notes.txt</span></button>
+        </div>
+        <div class="tree-row tree-row--selected" data-depth="1" data-file="photo">
+          <span class="tree-chevron-spacer"></span>
+          <button type="button" class="tree-name-button"><svg class="tree-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2h5l3 3v9H4z"/><path d="M9 2v3h3"/></svg><span class="tree-name bidi-isolate" dir="ltr">photo.JPG</span></button>
+        </div>
+        <div class="tree-row" data-depth="1" data-file="portrait">
+          <span class="tree-chevron-spacer"></span>
+          <button type="button" class="tree-name-button"><svg class="tree-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2h5l3 3v9H4z"/><path d="M9 2v3h3"/></svg><span class="tree-name bidi-isolate" dir="ltr">portrait.png</span></button>
+        </div>
+        <div class="tree-row" data-depth="1" data-file="broken">
+          <span class="tree-chevron-spacer"></span>
+          <button type="button" class="tree-name-button"><svg class="tree-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2h5l3 3v9H4z"/><path d="M9 2v3h3"/></svg><span class="tree-name bidi-isolate" dir="ltr">broken.webp</span></button>
+        </div>
+      </nav>
+      <div class="app-side app-side--with-preview">
+        <section class="details-panel">
+          <dl class="details-list">
+            <div class="details-row"><dt class="details-label">Name</dt><dd class="details-value"><span class="details-name bidi-isolate" dir="ltr" id="d-name">photo.JPG</span></dd></div>
+            <div class="details-row"><dt class="details-label">Type</dt><dd class="details-value" id="d-type">JPG</dd></div>
+            <div class="details-row"><dt class="details-label">Size</dt><dd class="details-value" id="d-size">2.4 MB</dd></div>
+            <div class="details-row"><dt class="details-label">Modified</dt><dd class="details-value">Oct 29, 2026, 3:20 PM</dd></div>
+          </dl>
+        </section>
+        <section class="preview-pane" id="preview"></section>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="mock-controls">
+  <b>Mockup only · click a file in the tree</b>
+  <span id="width"></span>
+</div>
+
+<script>
+  // Sample images, embedded so the page works offline from file://.
+  const svg = (w, h, body) =>
+    'data:image/svg+xml,' + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${body}</svg>`);
+  const LANDSCAPE = svg(1600, 1000, `
+    <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7FB2E5"/><stop offset="1" stop-color="#F4D9B0"/></linearGradient></defs>
+    <rect width="1600" height="1000" fill="url(#sky)"/>
+    <circle cx="1220" cy="300" r="110" fill="#FCE38A"/>
+    <path d="M0 720 L380 380 L640 620 L960 300 L1320 660 L1600 480 L1600 1000 L0 1000Z" fill="#4F6D7A"/>
+    <path d="M0 820 L420 600 L780 780 L1180 620 L1600 800 L1600 1000 L0 1000Z" fill="#2F4858"/>
+    <text x="40" y="960" font-family="system-ui" font-size="40" fill="#fff">photo.JPG · 1600×1000</text>`);
+  const PORTRAIT = svg(800, 1400, `
+    <rect width="800" height="1400" fill="#E9E2D0"/>
+    <rect x="300" y="200" width="200" height="900" rx="20" fill="#3B6EA8"/>
+    <circle cx="400" cy="200" r="150" fill="#D7E3F1" stroke="#3B6EA8" stroke-width="20"/>
+    <text x="40" y="1360" font-family="system-ui" font-size="40" fill="#1D2025">portrait.png · 800×1400</text>`);
+
+  const FILES = {
+    photo: { name: 'photo.JPG', type: 'JPG', size: '2.4 MB', preview: { src: LANDSCAPE } },
+    portrait: { name: 'portrait.png', type: 'PNG', size: '880 KB', preview: { src: PORTRAIT } },
+    broken: { name: 'broken.webp', type: 'WEBP', size: '12 KB', preview: { src: 'data:image/webp;base64,AAAA' } },
+    notes: { name: 'notes.txt', type: 'TXT', size: '1.2 KB', preview: null },
+  };
+
+  const side = document.querySelector('.app-side');
+  const pane = document.getElementById('preview');
+
+  function show(key) {
+    const f = FILES[key];
+    document.querySelectorAll('.tree-row').forEach((r) =>
+      r.classList.toggle('tree-row--selected', r.dataset.file === key));
+    document.getElementById('d-name').textContent = f.name;
+    document.getElementById('d-type').textContent = f.type;
+    document.getElementById('d-size').textContent = f.size;
+    side.classList.toggle('app-side--with-preview', f.preview !== null);
+    pane.hidden = f.preview === null;
+    pane.replaceChildren();
+    if (!f.preview) return;
+    const img = document.createElement('img');
+    img.className = 'preview-image';
+    img.alt = '';
+    img.onerror = () => {
+      const p = document.createElement('p');
+      p.className = 'preview-message status-row-text';
+      p.textContent = 'Unable to display this file';
+      pane.replaceChildren(p);
+    };
+    img.src = f.preview.src;
+    pane.append(img);
+  }
+
+  document.querySelectorAll('.tree-row[data-file] .tree-name-button').forEach((b) =>
+    b.addEventListener('click', () => show(b.closest('.tree-row').dataset.file)));
+
+  const width = document.getElementById('width');
+  const report = () => {
+    const w = window.innerWidth;
+    width.textContent = `window ${w}px · ${w >= 1120 ? 'side by side (≥ 1120)' : 'stacked (< 1120)'}`;
+  };
+  addEventListener('resize', report);
+  report();
+  show('photo');
+</script>
+</body>
+</html>

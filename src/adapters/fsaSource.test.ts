@@ -116,3 +116,32 @@ describe('FR-7 fsaSource.readFileMeta', () => {
     await expect(source.readFileMeta(ref)).rejects.toThrow('denied');
   });
 });
+
+describe('fsaSource.readFile', () => {
+  async function pickWithChild(child: object) {
+    const dirHandle = fakeHandle('project', 'directory', {
+      async *values() {
+        yield child;
+      },
+    });
+    vi.stubGlobal('showDirectoryPicker', vi.fn().mockResolvedValue(dirHandle));
+    const source = createFsaSource();
+    const root = await source.pickRoot();
+    const entries = [];
+    for await (const entry of source.listChildren(root!.ref)) entries.push(entry);
+    return { source, ref: entries[0].ref };
+  }
+
+  it('resolves to the blob from getFile()', async () => {
+    const content = new Blob(['x']);
+    const getFile = vi.fn().mockResolvedValue(content);
+    const { source, ref } = await pickWithChild(fakeHandle('a.png', 'file', { getFile }));
+    await expect(source.readFile(ref)).resolves.toBe(content);
+  });
+
+  it('fails through a rejected promise when getFile() rejects', async () => {
+    const getFile = vi.fn().mockRejectedValue(new DOMException('gone', 'NotFoundError'));
+    const { source, ref } = await pickWithChild(fakeHandle('a.png', 'file', { getFile }));
+    await expect(source.readFile(ref)).rejects.toThrow('gone');
+  });
+});

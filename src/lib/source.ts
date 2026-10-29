@@ -27,4 +27,6 @@ export interface DirectorySource {
   listChildren(dir: SourceRef): AsyncIterable<Entry>;
   /** FR-7: failures arrive only as a rejected promise. */
   readFileMeta(file: SourceRef): Promise<FileMeta>;
+  /** The file's content, for a preview. Failures arrive only as a rejected promise. */
+  readFile(file: SourceRef): Promise<Blob>;
 }

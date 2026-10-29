@@ -48,6 +48,34 @@ export type Details =
       readonly lastModified: number | null;
     };
 
+export type ReadyPreview = {
+  readonly kind: 'ready';
+  readonly id: NodeId;
+  readonly requestId: number;
+  readonly blob: Blob;
+};
+
+export type FailedPreview = { readonly kind: 'failed'; readonly id: NodeId; readonly requestId: number };
+
+/** The last preview that finished reading: what stays on screen while the next one loads. */
+export type SettledPreview = ReadyPreview | FailedPreview;
+
+/**
+ * The content read for a previewable file selection. Shares `id` and `requestId`
+ * with the `Details` of the same select. `shown` is the previous image selection's
+ * settled content, kept on screen until this one is ready (null: nothing to keep).
+ */
+export type Preview =
+  | { readonly kind: 'none' }
+  | {
+      readonly kind: 'loading';
+      readonly id: NodeId;
+      readonly requestId: number;
+      readonly shown: SettledPreview | null;
+    }
+  | ReadyPreview
+  | FailedPreview;
+
 export interface AppState {
   readonly supported: boolean;
   readonly generation: number;
@@ -55,6 +83,7 @@ export interface AppState {
   readonly expanded: ReadonlySet<NodeId>;
   readonly selectedId: NodeId | null;
   readonly details: Details;
+  readonly preview: Preview;
 }
 
 export type Action =
@@ -67,9 +96,13 @@ export type Action =
   | { type: 'fileSelected'; gen: number; id: NodeId; requestId: number }
   | { type: 'folderSelected'; id: NodeId }
   | { type: 'metaLoaded'; gen: number; requestId: number; meta: FileMeta }
-  | { type: 'metaFailed'; gen: number; id: NodeId; requestId: number };
+  | { type: 'metaFailed'; gen: number; id: NodeId; requestId: number }
+  | { type: 'previewLoaded'; gen: number; requestId: number; blob: Blob }
+  | { type: 'previewFailed'; gen: number; requestId: number };
 
 export const NO_DETAILS: Details = { kind: 'none' };
+
+export const NO_PREVIEW: Preview = { kind: 'none' };
 
 export function createInitialState(supported: boolean): AppState {
   return {
@@ -79,5 +112,6 @@ export function createInitialState(supported: boolean): AppState {
     expanded: new Set(),
     selectedId: null,
     details: NO_DETAILS,
+    preview: NO_PREVIEW,
   };
 }

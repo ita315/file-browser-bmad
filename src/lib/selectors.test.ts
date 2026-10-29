@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { reduce } from './reducer.ts';
-import { selectDetails, selectTopBar, selectVisibleRows } from './selectors.ts';
+import { selectDetails, selectPreview, selectTopBar, selectVisibleRows } from './selectors.ts';
 import type { Entry, SourceRef } from './source.ts';
 import { formatDate } from './format.ts';
 import { createInitialState, statusKey } from './state.ts';
@@ -316,5 +316,143 @@ describe('FR-6 FR-7 FR-8 selectDetails', () => {
   it('marks only the selected row', () => {
     const rows = selectVisibleRows(loading).filter((r) => r.type === 'item');
     expect(rows.filter((r) => r.selected).map((r) => r.id)).toEqual(['report.pdf']);
+  });
+});
+
+describe('image preview: reducer and selectPreview', () => {
+  const picked = reduce(createInitialState(true), { type: 'rootPicked', gen: 1, entry: entry('root', 'directory') });
+  const loaded = reduce(picked, {
+    type: 'loadSucceeded',
+    gen: 1,
+    id: '',
+    entries: [entry('src', 'directory'), entry('photo.JPG'), entry('b.png'), entry('notes.txt'), entry('.png')],
+  });
+  const loadingPhoto = reduce(loaded, { type: 'fileSelected', gen: 1, id: 'photo.JPG', requestId: 1 });
+  const blob = new Blob(['x']);
+  const readyPhoto = reduce(loadingPhoto, { type: 'previewLoaded', gen: 1, requestId: 1, blob });
+
+  it('starts with no preview', () => {
+    expect(createInitialState(true).preview).toEqual({ kind: 'none' });
+    expect(selectPreview(loaded)).toEqual({ type: 'none' });
+  });
+
+  it('fileSelected on an image starts loading the preview with the same id and requestId', () => {
+    expect(loadingPhoto.preview).toEqual({ kind: 'loading', id: 'photo.JPG', requestId: 1, shown: null });
+    expect(selectPreview(loadingPhoto)).toEqual({ type: 'loading' });
+  });
+
+  it.each(['notes.txt', '.png'])('fileSelected on %s has no preview', (id) => {
+    const state = reduce(loaded, { type: 'fileSelected', gen: 1, id, requestId: 1 });
+    expect(state.preview).toEqual({ kind: 'none' });
+    expect(selectPreview(state)).toEqual({ type: 'none' });
+  });
+
+  it('previewLoaded shows the image with the MIME from its extension', () => {
+    expect(readyPhoto.preview).toEqual({ kind: 'ready', id: 'photo.JPG', requestId: 1, blob });
+    expect(selectPreview(readyPhoto)).toEqual({ type: 'image', blob, mime: 'image/jpeg', held: false });
+    expect(readyPhoto.details).toBe(loadingPhoto.details);
+  });
+
+  it('previewFailed shows unavailable without touching the details', () => {
+    const failed = reduce(loadingPhoto, { type: 'previewFailed', gen: 1, requestId: 1 });
+    expect(failed.preview).toEqual({ kind: 'failed', id: 'photo.JPG', requestId: 1 });
+    expect(selectPreview(failed)).toEqual({ type: 'unavailable' });
+    expect(failed.details).toBe(loadingPhoto.details);
+  });
+
+  it('drops previewLoaded / previewFailed from an old generation, an old request or a settled preview (same reference)', () => {
+    for (const type of ['previewLoaded', 'previewFailed'] as const) {
+      const act = (gen: number, requestId: number) =>
+        type === 'previewLoaded' ? { type, gen, requestId, blob } : { type, gen, requestId };
+      expect(reduce(loadingPhoto, act(2, 1))).toBe(loadingPhoto);
+      expect(reduce(loadingPhoto, act(1, 7))).toBe(loadingPhoto);
+      expect(reduce(readyPhoto, act(1, 1))).toBe(readyPhoto);
+      expect(reduce(loaded, act(1, 1))).toBe(loaded);
+    }
+  });
+
+  it('a new image selection replaces the preview; the old content is dropped', () => {
+    const loadingB = reduce(readyPhoto, { type: 'fileSelected', gen: 1, id: 'b.png', requestId: 2 });
+    expect(loadingB.preview).toEqual({ kind: 'loading', id: 'b.png', requestId: 2, shown: readyPhoto.preview });
+    expect(reduce(loadingB, { type: 'previewLoaded', gen: 1, requestId: 1, blob })).toBe(loadingB);
+  });
+
+  it('folderSelected, rootPicked and a current metaFailed clear the preview', () => {
+    expect(reduce(readyPhoto, { type: 'folderSelected', id: 'src' }).preview).toEqual({ kind: 'none' });
+    expect(reduce(readyPhoto, { type: 'rootPicked', gen: 2, entry: entry('other', 'directory') }).preview).toEqual({
+      kind: 'none',
+    });
+    const failed = reduce(readyPhoto, { type: 'metaFailed', gen: 1, id: 'photo.JPG', requestId: 1 });
+    expect(failed.selectedId).toBeNull();
+    expect(failed.preview).toEqual({ kind: 'none' });
+  });
+
+  it('an old metaFailed keeps the current preview', () => {
+    const loadingB = reduce(readyPhoto, { type: 'fileSelected', gen: 1, id: 'b.png', requestId: 2 });
+    const oldFailed = reduce(loadingB, { type: 'metaFailed', gen: 1, id: 'photo.JPG', requestId: 1 });
+    expect(oldFailed.preview).toBe(loadingB.preview);
+  });
+
+  it('selecting a known unreadable image clears the preview', () => {
+    const failed = reduce(readyPhoto, { type: 'metaFailed', gen: 1, id: 'photo.JPG', requestId: 1 });
+    const loadingB = reduce(failed, { type: 'fileSelected', gen: 1, id: 'b.png', requestId: 2 });
+    const again = reduce(loadingB, { type: 'fileSelected', gen: 1, id: 'photo.JPG', requestId: 3 });
+    expect(again.selectedId).toBeNull();
+    expect(again.preview).toEqual({ kind: 'none' });
+  });
+
+  describe('shown: what stays on screen while the next image loads', () => {
+    const blobB = new Blob(['B']);
+    const loadingB = reduce(readyPhoto, { type: 'fileSelected', gen: 1, id: 'b.png', requestId: 2 });
+    const readyB = reduce(loadingB, { type: 'previewLoaded', gen: 1, requestId: 2, blob: blobB });
+
+    it('image → image keeps the ready image and shows it, held, with its own MIME', () => {
+      expect(loadingB.preview).toMatchObject({ kind: 'loading', shown: readyPhoto.preview });
+      expect(selectPreview(loadingB)).toEqual({ type: 'image', blob, mime: 'image/jpeg', held: true });
+      expect(selectPreview(readyB)).toEqual({ type: 'image', blob: blobB, mime: 'image/png', held: false });
+    });
+
+    it('A → B → C while B still loads keeps A', () => {
+      const loadingPhotoAgain = reduce(loadingB, { type: 'fileSelected', gen: 1, id: 'photo.JPG', requestId: 3 });
+      expect(loadingPhotoAgain.preview).toMatchObject({ kind: 'loading', requestId: 3, shown: readyPhoto.preview });
+      expect(selectPreview(loadingPhotoAgain)).toEqual({ type: 'image', blob, mime: 'image/jpeg', held: true });
+    });
+
+    it('A → B → C after B is ready keeps B (held, so the UI starts nothing new for it)', () => {
+      const loadingC = reduce(readyB, { type: 'fileSelected', gen: 1, id: 'photo.JPG', requestId: 3 });
+      expect(loadingC.preview).toMatchObject({ kind: 'loading', shown: readyB.preview });
+      expect(selectPreview(loadingC)).toEqual({ type: 'image', blob: blobB, mime: 'image/png', held: true });
+    });
+
+    it('failed → image keeps the message', () => {
+      const failed = reduce(loadingPhoto, { type: 'previewFailed', gen: 1, requestId: 1 });
+      const next = reduce(failed, { type: 'fileSelected', gen: 1, id: 'b.png', requestId: 2 });
+      expect(next.preview).toMatchObject({ kind: 'loading', shown: failed.preview });
+      expect(selectPreview(next)).toEqual({ type: 'unavailable' });
+    });
+
+    it('non-image → image has nothing to keep and shows Loading…', () => {
+      const notes = reduce(readyPhoto, { type: 'fileSelected', gen: 1, id: 'notes.txt', requestId: 2 });
+      const next = reduce(notes, { type: 'fileSelected', gen: 1, id: 'b.png', requestId: 3 });
+      expect(next.preview).toMatchObject({ kind: 'loading', shown: null });
+      expect(selectPreview(next)).toEqual({ type: 'loading' });
+    });
+
+    it('a folder or a new root in between leaves nothing to keep', () => {
+      const folder = reduce(readyPhoto, { type: 'folderSelected', id: 'src' });
+      expect(reduce(folder, { type: 'fileSelected', gen: 1, id: 'b.png', requestId: 2 }).preview).toMatchObject({
+        shown: null,
+      });
+      expect(reduce(loadingB, { type: 'folderSelected', id: 'src' }).preview).toEqual({ kind: 'none' });
+      const repicked = reduce(loadingB, { type: 'rootPicked', gen: 2, entry: entry('root', 'directory') });
+      expect(repicked.preview).toEqual({ kind: 'none' });
+    });
+
+    it('the new content replaces shown, and a late result for the old request is dropped', () => {
+      expect(readyB.preview).toEqual({ kind: 'ready', id: 'b.png', requestId: 2, blob: blobB });
+      expect(reduce(loadingB, { type: 'previewLoaded', gen: 1, requestId: 1, blob })).toBe(loadingB);
+      const failedB = reduce(loadingB, { type: 'previewFailed', gen: 1, requestId: 2 });
+      expect(failedB.preview).toEqual({ kind: 'failed', id: 'b.png', requestId: 2 });
+    });
   });
 });

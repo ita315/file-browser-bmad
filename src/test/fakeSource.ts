@@ -29,6 +29,12 @@ export interface FakeFile {
   failMeta: boolean;
   /** readFileMeta waits for this first. */
   gate?: Promise<void>;
+  /** What readFile resolves to. */
+  content: Blob;
+  /** readFile rejects. */
+  failRead: boolean;
+  /** readFile waits for this first. */
+  readGate?: Promise<void>;
 }
 
 export interface FakeDir {
@@ -51,7 +57,15 @@ export function dir(
 }
 
 export function file(
-  options: { size?: number; lastModified?: number | null; failMeta?: boolean; gate?: Promise<void> } = {},
+  options: {
+    size?: number;
+    lastModified?: number | null;
+    failMeta?: boolean;
+    gate?: Promise<void>;
+    content?: Blob;
+    failRead?: boolean;
+    readGate?: Promise<void>;
+  } = {},
 ): FakeFile {
   return {
     kind: 'file',
@@ -59,6 +73,9 @@ export function file(
     lastModified: options.lastModified === undefined ? 0 : options.lastModified,
     failMeta: options.failMeta ?? false,
     gate: options.gate,
+    content: options.content ?? new Blob([]),
+    failRead: options.failRead ?? false,
+    readGate: options.readGate,
   };
 }
 
@@ -71,6 +88,7 @@ export interface FakeSource extends DirectorySource {
     pickRoot: number;
     listChildren: FakeDir[];
     readFileMeta: FakeFile[];
+    readFile: FakeFile[];
   };
 }
 
@@ -85,7 +103,7 @@ function fromRef<T extends FakeNode>(ref: SourceRef): T {
 export function createFakeSource(options: { supported?: boolean } = {}): FakeSource {
   const supported = options.supported ?? true;
   const picks: Array<Entry | null> = [];
-  const calls: FakeSource['calls'] = { pickRoot: 0, listChildren: [], readFileMeta: [] };
+  const calls: FakeSource['calls'] = { pickRoot: 0, listChildren: [], readFileMeta: [], readFile: [] };
 
   return {
     calls,
@@ -118,6 +136,13 @@ export function createFakeSource(options: { supported?: boolean } = {}): FakeSou
       if (node.gate) await node.gate;
       if (node.failMeta) throw new Error('fake: meta failed');
       return { size: node.size, lastModified: node.lastModified };
+    },
+    async readFile(ref: SourceRef): Promise<Blob> {
+      const node = fromRef<FakeFile>(ref);
+      calls.readFile.push(node);
+      if (node.readGate) await node.readGate;
+      if (node.failRead) throw new Error('fake: read failed');
+      return node.content;
     },
   };
 }
