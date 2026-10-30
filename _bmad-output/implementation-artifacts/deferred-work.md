@@ -15,3 +15,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-mcp-tokens-get-token-description.md`
   summary: ‏`.memlog.md` של spec-mcp-tokens (שורה 30) עדיין רושם את הטריגר הישן "לפני שכותבים ערך עיצובי ב-CSS", וצריך להוסיף שורת `(decision)` שמחליפה אותו.
   evidence: ‏bmad-spec בונה מחדש מה-memlog, כך שעדכון הבא של ה-spec עלול להחזיר את הנוסח הישן.
+
+- source_spec: אין (תקלה ב-`main` אחרי מיזוג PR #1 ו-PR #2, תוקנה ב-`090cae2`)
+  summary: ‏GitHub Action שמריץ `npm run check` על כל PR, יחד עם branch protection על `main` עם "Require branches to be up to date before merging", כדי שהבדיקה תרוץ על הקוד המשולב לפני המיזוג.
+  evidence: ה-pre-commit hook רץ רק על commits מקומיים. ‏PR #1 (image-preview) ו-PR #2 (design-tokens) היו ירוקים כל אחד לבד, אבל ה-merge commit ‏`35203cb` שנוצר ב-GitHub לא נבדק, ו-`main` נשאר אדום (3 מתוך 229 טסטים): ‏#1 הוסיף שני טוקנים, והטסטים של #2 קבעו 46.
