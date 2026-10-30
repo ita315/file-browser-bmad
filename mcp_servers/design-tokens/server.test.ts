@@ -8,6 +8,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createServer, loadTokensFile, resolveTokensFile, type LoadCss } from './server.ts'
+import { parseTokens } from './tokens.ts'
 
 const css = readFileSync(new URL('../../src/ui/tokens.css', import.meta.url), 'utf8')
 const projectRoot = fileURLToPath(new URL('../../', import.meta.url))
@@ -117,7 +118,7 @@ describe('get_token', () => {
 })
 
 describe('tokens://all', () => {
-  it('returns 46 JSON entries with a known category', async () => {
+  it('returns one JSON entry per token, each with a known category', async () => {
     const c = await connect(async () => css)
     const { contents } = await c.readResource({ uri: 'tokens://all' })
     expect(contents).toHaveLength(1)
@@ -125,7 +126,7 @@ describe('tokens://all', () => {
     const [content] = contents
     if (!('text' in content)) throw new Error('expected a text resource')
     const tokens = JSON.parse(content.text) as { name: string; value: string; category: string }[]
-    expect(tokens).toHaveLength(46)
+    expect(tokens).toHaveLength(parseTokens(css).length)
     for (const token of tokens) {
       expect(['color', 'typography', 'rounded', 'spacing']).toContain(token.category)
       expect(Object.keys(token).sort()).toEqual(['category', 'name', 'value'])
