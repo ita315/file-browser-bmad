@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "design-tokens": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["--experimental-strip-types", "mcp_servers/design-tokens/server.ts"],
+      "env": { "TOKENS_FILE": "${TOKENS_FILE:-src/ui/tokens.css}" }
+    }
+  }
+}
