@@ -4,11 +4,14 @@ import { describe, expect, it } from 'vitest'
 import { CSS_FILE, TOKEN_NAME, findToken, parseTokens } from './tokens.ts'
 
 const css = readFileSync(new URL('../../src/ui/tokens.css', import.meta.url), 'utf8')
+// Counted line by line, independently of parseTokens, so a new token doesn't break the test.
+const declarationCount = css.split('\n').filter((line) => /^\s*--[a-z0-9-]+\s*:/.test(line)).length
 
 describe('parseTokens', () => {
-  it('reads all 46 tokens from the real tokens.css', () => {
+  it('reads every token declared in the real tokens.css', () => {
     const tokens = parseTokens(css)
-    expect(tokens).toHaveLength(46)
+    expect(declarationCount).toBeGreaterThan(0)
+    expect(tokens).toHaveLength(declarationCount)
     expect(findToken(tokens, '--color-accent')).toEqual({
       name: '--color-accent',
       value: '#3B6EA8',
@@ -17,9 +20,10 @@ describe('parseTokens', () => {
   })
 
   it('assigns the category from the first name segment', () => {
-    const counts: Record<string, number> = {}
-    for (const token of parseTokens(css)) counts[token.category] = (counts[token.category] ?? 0) + 1
-    expect(counts).toEqual({ color: 8, typography: 17, rounded: 2, spacing: 19 })
+    for (const token of parseTokens(css)) {
+      expect(['color', 'typography', 'rounded', 'spacing']).toContain(token.category)
+      expect(token.name.startsWith(`--${token.category}-`)).toBe(true)
+    }
   })
 
   it('keeps values with commas and quotes intact', () => {

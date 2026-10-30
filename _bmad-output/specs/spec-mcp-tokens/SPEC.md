@@ -21,7 +21,7 @@ sources: []
   - **success:** ‏`get_token({ name: "--color-accent" })` מחזיר `#3B6EA8`. ‏`name: "color-accent"` נדחה ב-schema, וה-handler לא רץ. ‏`name: "--color-nope"` עובר את ה-schema ומחזיר `isError: true` עם הודעת "לא נמצא".
 - **CAP-2**
   - **intent:** ‏Ita מצרפת לשיחה עם `@` את רשימת כל הטוקנים, בצורה מובנית.
-  - **success:** ה-resource מחזיר `application/json` עם 46 רשומות `{ name, value, category }`, ו-`category` הוא אחד מ-`color`, ‏`typography`, ‏`rounded` או `spacing`.
+  - **success:** ה-resource מחזיר `application/json` עם רשומה `{ name, value, category }` לכל טוקן שמוצהר ב-`:root` של `tokens.css`, ו-`category` הוא אחד מ-`color`, ‏`typography`, ‏`rounded` או `spacing`.
 - **CAP-3**
   - **intent:** ‏Ita מפעילה פקודת לוכסן שמנחה את המודל להחליף ערכים ממשיים בקובץ CSS ב-`var(--…)`.
   - **success:** ‏`/mcp__design-tokens__style-with-tokens` עם `file: "src/ui/app.css"` מחזיר הנחיה שכוללת את שם הקובץ ואת רשימת הטוקנים. ‏`file: "README.md"` נדחה ב-schema.
