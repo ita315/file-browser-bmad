@@ -1,0 +1,5 @@
+{
+  "name": "file-viewer",
+  "version": "0.1.0",
+  "description": "A pane beside the chat that browses project files (step A: proves the pipeline)"
+}
