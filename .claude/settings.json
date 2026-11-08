@@ -1,0 +1,10 @@
+{
+  "extraKnownMarketplaces": {
+    "ita-plugins": {
+      "source": { "source": "github", "repo": "ita315/rules-review-kit" }
+    }
+  },
+  "enabledPlugins": {
+    "file-viewer@ita-plugins": true
+  }
+}

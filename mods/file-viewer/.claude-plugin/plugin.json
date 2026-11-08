@@ -1,0 +1,6 @@
+{
+  "name": "file-viewer",
+  "version": "0.1.0",
+  "types": "./types/file-viewer.d.ts",
+  "description": "A pane beside the chat that browses project files (step A: proves the pipeline)"
+}
