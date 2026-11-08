@@ -5,7 +5,6 @@
     }
   },
   "enabledPlugins": {
-    "rules-review-kit@ita-plugins": true,
     "file-viewer@ita-plugins": true
   }
 }
