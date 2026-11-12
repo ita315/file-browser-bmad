@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { reduce } from './reducer.ts';
 import { selectDetails, selectPreview, selectTopBar, selectVisibleRows } from './selectors.ts';
 import type { Entry, SourceRef } from './source.ts';
-import { formatDate } from './format.ts';
 import { createInitialState, statusKey } from './state.ts';
 import type { AppState } from './state.ts';
 import { TEXT } from './text.ts';
@@ -303,7 +302,7 @@ describe('FR-6 FR-7 FR-8 selectDetails', () => {
       name: 'report.pdf',
       typeLabel: 'PDF',
       size: '1.5 KB',
-      modified: formatDate(ms),
+      modified: 'Oct 22, 2026, 3:20 PM',
     });
     expect(selectDetails(ready(null))).toMatchObject({ modified: TEXT.unknownValue });
   });

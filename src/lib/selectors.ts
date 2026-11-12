@@ -104,7 +104,7 @@ export function selectDetails(state: AppState): DetailsView {
       name: node.name,
       typeLabel: formatType(node.name),
       size: formatSize(details.size),
-      // Local time zone in the app; tests compare against formatDate itself.
+      // Local time zone in the app; tests run with TZ=UTC (vite.config.ts).
       modified: formatDate(details.lastModified),
     };
   }
