@@ -1,0 +1,10 @@
+{
+  "session_id": "sample-session",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Edit",
+  "tool_input": {
+    "file_path": "/Users/raskin/course/file-browser-bmad/src/lib/format.ts",
+    "old_string": "export function formatSize",
+    "new_string": "export function formatBytes"
+  }
+}

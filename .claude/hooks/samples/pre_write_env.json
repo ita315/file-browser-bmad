@@ -1,0 +1,9 @@
+{
+  "session_id": "sample-session",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Write",
+  "tool_input": {
+    "file_path": "/Users/raskin/course/file-browser-bmad/.env",
+    "content": "API_KEY=secret\n"
+  }
+}

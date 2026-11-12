@@ -1,0 +1,10 @@
+{
+  "session_id": "sample-session",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Edit",
+  "tool_input": {
+    "file_path": "/Users/raskin/course/file-browser-bmad/.claude/settings.json",
+    "old_string": "\"hooks\": {}",
+    "new_string": "\"hooks\": { \"PreToolUse\": [] }"
+  }
+}
