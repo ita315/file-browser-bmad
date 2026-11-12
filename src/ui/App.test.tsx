@@ -478,7 +478,7 @@ describe('image preview pane', () => {
 
     decodes[1].gate.resolve();
     await waitFor(() => expect(shownSrc(container)).toEqual(['blob:test/2']));
-    expect(revoked).toEqual(['blob:test/1']);
+    await waitFor(() => expect(revoked).toEqual(['blob:test/1']));
   });
 
   it('shows Unable to display this file when decode() fails, and frees its URL', async () => {
@@ -489,7 +489,7 @@ describe('image preview pane', () => {
     decodes[0].gate.reject(new Error('EncodingError'));
     await screen.findByText(TEXT.unableToDisplay);
     expect(shownSrc(container)).toEqual([]);
-    expect(revoked).toEqual(['blob:test/1']);
+    await waitFor(() => expect(revoked).toEqual(['blob:test/1']));
   });
 
   it('message → image: the message stays until the next image is decoded', async () => {
@@ -543,7 +543,7 @@ describe('image preview pane', () => {
     await clickName('b.png');
     await screen.findByText(TEXT.unableToDisplay);
     expect(shownSrc(container)).toEqual([]);
-    expect(revoked).toEqual(['blob:test/1']);
+    await waitFor(() => expect(revoked).toEqual(['blob:test/1']));
 
     await clickName('c.png');
     gateC.resolve();
@@ -581,7 +581,7 @@ describe('image preview pane', () => {
     expect(pane(container)?.textContent).toBe('');
     decodes[2].gate.resolve();
     await waitFor(() => expect(shownSrc(container)).toEqual(['blob:test/3']));
-    expect(revoked).toEqual(['blob:test/2', 'blob:test/1']);
+    await waitFor(() => expect(revoked).toEqual(['blob:test/2', 'blob:test/1']));
   });
 
   it('a decode still pending when the column goes away frees its URL when it ends', async () => {
@@ -617,7 +617,7 @@ describe('image preview pane', () => {
     await screen.findByText(TEXT.unableToRead);
     expect(pane(container)).toBeNull();
     expect(withPreview(container)).toBe(false);
-    expect(revoked).toEqual(['blob:test/1']);
+    await waitFor(() => expect(revoked).toEqual(['blob:test/1']));
   });
 
   it('A then B with A arriving last: shows only B', async () => {
@@ -643,12 +643,12 @@ describe('image preview pane', () => {
 
     await clickName('b.gif');
     await waitFor(() => expect(pane(container)?.querySelector('img')?.getAttribute('src')).toBe('blob:test/2'));
-    expect(revoked).toEqual(['blob:test/1']);
+    await waitFor(() => expect(revoked).toEqual(['blob:test/1']));
 
     await clickName('src');
     expect(pane(container)).toBeNull();
     expect(withPreview(container)).toBe(false);
-    expect(revoked).toEqual(['blob:test/1', 'blob:test/2']);
+    await waitFor(() => expect(revoked).toEqual(['blob:test/1', 'blob:test/2']));
   });
 
   it('removes the column and drops late content when a new root is picked', async () => {
