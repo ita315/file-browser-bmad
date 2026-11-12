@@ -34,6 +34,10 @@ describe('FR-7 formatSize (AC-3)', () => {
     expect(formatSize(bytes)).toBe(expected);
   });
 
+  it('shows an empty file (0 bytes) as "0 B", without a decimal', () => {
+    expect(formatSize(0)).toBe('0 B');
+  });
+
   it('stays in TB above 1000 TB', () => {
     expect(formatSize(2_500_000_000_000_000)).toBe('2500 TB');
   });
