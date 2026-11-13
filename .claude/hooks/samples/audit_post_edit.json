@@ -1,0 +1,11 @@
+{
+  "session_id": "sample-session",
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Edit",
+  "tool_input": {
+    "file_path": "src/lib/format.ts",
+    "old_string": "(never logged)",
+    "new_string": "(never logged)"
+  },
+  "tool_response": { "success": true }
+}
