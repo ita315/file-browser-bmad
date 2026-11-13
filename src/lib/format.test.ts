@@ -38,6 +38,10 @@ describe('FR-7 formatSize (AC-3)', () => {
     expect(formatSize(0)).toBe('0 B');
   });
 
+  it('uses decimal units, so 1024 bytes → "1 KB"', () => {
+    expect(formatSize(1024)).toBe('1 KB');
+  });
+
   it('stays in TB above 1000 TB', () => {
     expect(formatSize(2_500_000_000_000_000)).toBe('2500 TB');
   });
