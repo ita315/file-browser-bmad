@@ -5,11 +5,15 @@
       "Bash(npm test)",
       "Bash(git status *)",
       "Bash(git diff *)",
-      "Bash(git log *)"
+      "Bash(git log *)",
+      "Bash(grep *)",
+      "Bash(head *)",
+      "Bash(tail *)"
     ],
     "ask": [
       "Bash(git push *)",
       "Bash(git commit *)",
+      "Bash(gh pr *)",
       "Bash(npm install *)",
       "Bash(rm *)",
       "Bash(mv *)",
@@ -20,8 +24,11 @@
       "Bash(rm -rf *)",
       "Bash(npm publish *)",
       "Bash(git push --force *)",
+      "Bash(claude)",
+      "Bash(claude *)",
       "Read(./.env)",
       "Read(./.env.*)",
+      "Read(~/.claude/**)",
       "Edit(./.env*)",
       "Edit(./.claude/settings.json)"
     ]
@@ -39,7 +46,8 @@
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-bash.sh" }
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-bash.sh" },
+          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/bash-write-check.mjs", "timeout": 15 }
         ]
       },
       {
@@ -50,6 +58,12 @@
       }
     ],
     "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/bash-write-check.mjs", "timeout": 15 }
+        ]
+      },
       {
         "matcher": "Edit|Write",
         "hooks": [

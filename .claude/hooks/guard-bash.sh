@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # PreToolUse hook for the Bash tool.
 # Blocks: rm with -r and -f together, npm publish, git push --force / -f,
-# any mention of .env / .env.* (except .env.example), writes to .claude/settings.json or dist/.
+# any mention of .env / .env.* (except .env.example), writes to .claude/settings.json or dist/,
+# --no-verify in any command, git commit -n (also bundled, like -nm), and git config / git -c that sets core.hooksPath (both bypass the pre-commit check).
 # Fail closed: any parsing problem blocks the command (exit 2).
 
 block() {
@@ -25,6 +26,10 @@ while [[ $rest =~ $env_re ]]; do
   [[ ${BASH_REMATCH[2]} == .env.example ]] || block "${BASH_REMATCH[2]} may hold secrets. Only .env.example can be touched through Bash."
   rest=${rest#*"${BASH_REMATCH[2]}"}
 done
+
+# --no-verify skips the pre-commit hook (npm run check). Any command carrying it is blocked.
+novfy_re='(^|[[:space:]])--no-verify($|[[:space:]=])'
+[[ $cmd =~ $novfy_re ]] && block "--no-verify skips the pre-commit hook, which runs npm run check. Fix the check instead."
 
 # Protected write targets: .claude/settings.json and anything under dist/.
 is_protected() {
@@ -101,6 +106,33 @@ while IFS= read -r line; do
           [[ $tok == --force || $tok == -f ]] && force=1
         done
         ((push && force)) && block "git push --force / -f can overwrite remote history. Use a normal push."
+        # core.hooksPath (git config, or git -c) redirects the hooks away from .githooks and skips pre-commit.
+        # Read-only queries (--get, --list, ...) pass, unless -c is used. Config keys are case-insensitive.
+        shopt -s nocasematch
+        hp=0 ro=0 dashc=0
+        for ((j = i + 1; j < n; j++)); do
+          tok=${t[j]}
+          [[ $tok == *core.hooksPath* ]] && hp=1
+          [[ $tok == --get || $tok == --get-all || $tok == --get-regexp || $tok == --list || $tok == -l ]] && ro=1
+          [[ $tok == -c ]] && dashc=1
+        done
+        shopt -u nocasematch
+        ((hp && (dashc || !ro))) && block "changing core.hooksPath bypasses the pre-commit hook, which runs npm run check."
+        # git commit -n is the short form of --no-verify, also inside bundled flags (-nm, -an).
+        # In a bundle, a flag that takes a value (m, F, C, c, t, u, S) ends the scan: the rest is its value (-mnote).
+        cm=0
+        for ((j = i + 1; j < n; j++)); do
+          tok=${t[j]}
+          if [[ $tok == commit ]]; then
+            cm=1
+          elif ((cm)) && [[ $tok == -[!-]* ]]; then
+            for ((k = 1; k < ${#tok}; k++)); do
+              ch=${tok:k:1}
+              [[ $ch == n ]] && block "git commit -n is --no-verify: it skips the pre-commit hook, which runs npm run check."
+              [[ $ch == [mFCctuS] ]] && break
+            done
+          fi
+        done
         ;;
     esac
   done
