@@ -35,6 +35,35 @@ describe('FR-1 Open folder button', () => {
   });
 });
 
+describe('tree summary line', () => {
+  it('shows file and image counts under the tree and updates after opening a folder', async () => {
+    const source = createFakeSource();
+    const controller = createController(source);
+    source.queuePick(
+      'project',
+      dir({
+        'a.png': file(),
+        'c.txt': file(),
+        src: dir({ 'b.jpg': file(), 'd.md': file(), 'e.ts': file() }),
+      }),
+    );
+    const { container } = render(<App controller={controller} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: TEXT.openFolder }));
+    await screen.findByText('a.png');
+    const summary = () => container.querySelector('.tree > .tree-summary');
+    expect(summary()?.textContent).toBe('2 files · 1 image');
+    expect(container.querySelector('.tree')?.lastElementChild).toBe(summary());
+
+    const srcRow = [...container.querySelectorAll('.tree-row')].find(
+      (r) => r.querySelector('.tree-name')?.textContent === 'src',
+    );
+    await user.click(srcRow?.querySelector('button.tree-chevron') as HTMLElement);
+    await screen.findByText('e.ts');
+    expect(summary()?.textContent).toBe('5 files · 2 images');
+  });
+});
+
 describe('FR-2 unsupported browser', () => {
   it('shows only the message and no button', () => {
     render(<App controller={createController(createFakeSource({ supported: false }))} />);

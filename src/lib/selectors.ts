@@ -93,6 +93,30 @@ export function selectVisibleRows(state: AppState): Row[] {
   return rows;
 }
 
+export type FileCounts = { files: number; images: number };
+
+/** Counts the files (not folders) among the nodes, and how many of them are images by extension. */
+export function countFiles(nodes: Iterable<TreeNode>): FileCounts {
+  let files = 0;
+  let images = 0;
+  for (const node of nodes) {
+    if (node.kind !== 'file') continue;
+    files += 1;
+    if (previewOf(node.name)?.kind === 'image') images += 1;
+  }
+  return { files, images };
+}
+
+/** "12 files · 3 images" for the files loaded so far; null before a root is picked. */
+export function selectSummary(state: AppState): string | null {
+  if (!state.nodes.has(ROOT_ID)) return null;
+  const { files, images } = countFiles(state.nodes.values());
+  return [
+    `${files} ${files === 1 ? TEXT.summaryFileOne : TEXT.summaryFileMany}`,
+    `${images} ${images === 1 ? TEXT.summaryImageOne : TEXT.summaryImageMany}`,
+  ].join(TEXT.summarySeparator);
+}
+
 export function selectDetails(state: AppState): DetailsView {
   const { details } = state;
   if (details.kind !== 'none') {

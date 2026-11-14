@@ -15,4 +15,9 @@ export const TEXT = {
   labelModified: 'Modified',
   typeFolder: 'Folder',
   unknownValue: '—',
+  summaryFileOne: 'file',
+  summaryFileMany: 'files',
+  summaryImageOne: 'image',
+  summaryImageMany: 'images',
+  summarySeparator: ' · ',
 } as const;

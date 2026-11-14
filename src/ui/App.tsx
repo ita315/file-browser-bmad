@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { Controller } from '../lib/controller.ts';
-import { selectDetails, selectPreview, selectTopBar, selectVisibleRows } from '../lib/selectors.ts';
+import { selectDetails, selectPreview, selectSummary, selectTopBar, selectVisibleRows } from '../lib/selectors.ts';
 import { DetailsPanel } from './DetailsPanel.tsx';
 import { PreviewPane } from './PreviewPane.tsx';
 import { TopBar } from './TopBar.tsx';
@@ -11,6 +11,7 @@ export function App({ controller }: { controller: Controller }) {
   const state = useAppState(controller);
   const topBar = useMemo(() => selectTopBar(state), [state]);
   const rows = useMemo(() => selectVisibleRows(state), [state]);
+  const summary = useMemo(() => selectSummary(state), [state]);
   const details = useMemo(() => selectDetails(state), [state]);
   const preview = useMemo(() => selectPreview(state), [state]);
 
@@ -20,6 +21,7 @@ export function App({ controller }: { controller: Controller }) {
       <main className="app-body">
         <Tree
           rows={rows}
+          summary={summary}
           onToggle={(id) => void controller.toggle(id)}
           onSelect={(id) => void controller.select(id)}
         />

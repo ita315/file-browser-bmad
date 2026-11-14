@@ -4,10 +4,12 @@ import { TreeRow } from './TreeRow.tsx';
 
 export function Tree({
   rows,
+  summary,
   onToggle,
   onSelect,
 }: {
   rows: readonly Row[];
+  summary: string | null;
   onToggle: (id: NodeId) => void;
   onSelect: (id: NodeId) => void;
 }) {
@@ -16,6 +18,7 @@ export function Tree({
       {rows.map((row) => (
         <TreeRow key={row.type === 'item' ? row.id : row.key} row={row} onToggle={onToggle} onSelect={onSelect} />
       ))}
+      {summary !== null && <p className="tree-summary">{summary}</p>}
     </nav>
   );
 }

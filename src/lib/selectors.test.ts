@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { reduce } from './reducer.ts';
-import { selectDetails, selectPreview, selectTopBar, selectVisibleRows } from './selectors.ts';
+import {
+  countFiles,
+  selectDetails,
+  selectPreview,
+  selectSummary,
+  selectTopBar,
+  selectVisibleRows,
+} from './selectors.ts';
 import type { Entry, SourceRef } from './source.ts';
 import { createInitialState, statusKey } from './state.ts';
 import type { AppState } from './state.ts';
@@ -22,6 +29,40 @@ describe('FR-6 before a root is picked', () => {
 
   it('shows the empty details prompt', () => {
     expect(selectDetails(state)).toEqual({ type: 'empty' });
+  });
+});
+
+describe('selectSummary', () => {
+  const root = reduce(reduce(createInitialState(true), { type: 'rootPicked', gen: 1, entry: entry('root', 'directory') }), {
+    type: 'loadStarted',
+    gen: 1,
+    id: '',
+  });
+  const withRoot = reduce(root, {
+    type: 'loadSucceeded',
+    gen: 1,
+    id: '',
+    entries: [entry('a.png'), entry('c.txt'), entry('src', 'directory')],
+  });
+  const loaded = reduce(reduce(withRoot, { type: 'loadStarted', gen: 1, id: 'src' }), {
+    type: 'loadSucceeded',
+    gen: 1,
+    id: 'src',
+    entries: [entry('b.JPG'), entry('d.md'), entry('e.ts')],
+  });
+
+  it('counts exactly 5 files, 2 of them images, and skips folders', () => {
+    expect(countFiles(loaded.nodes.values())).toEqual({ files: 5, images: 2 });
+    expect(selectSummary(loaded)).toBe('5 files · 2 images');
+  });
+
+  it('uses singular forms', () => {
+    const one = reduce(root, { type: 'loadSucceeded', gen: 1, id: '', entries: [entry('a.png')] });
+    expect(selectSummary(one)).toBe('1 file · 1 image');
+  });
+
+  it('is null before a root is picked', () => {
+    expect(selectSummary(createInitialState(true))).toBeNull();
   });
 });
 

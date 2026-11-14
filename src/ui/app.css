@@ -129,6 +129,15 @@ body {
   background: var(--color-surface-tree);
 }
 
+.tree-summary {
+  margin: 0;
+  padding: var(--spacing-2);
+  color: var(--color-text-muted);
+  font-family: var(--typography-small-font-family);
+  font-size: var(--typography-small-font-size);
+  font-weight: var(--typography-small-font-weight);
+}
+
 .tree-row,
 .status-row {
   display: flex;
