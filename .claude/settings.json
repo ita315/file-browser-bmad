@@ -1,4 +1,31 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npm test)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(git commit *)",
+      "Bash(npm install *)",
+      "Bash(rm *)",
+      "Bash(mv *)",
+      "Edit(./CLAUDE.md)",
+      "Edit(./_bmad-output/**)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(npm publish *)",
+      "Bash(git push --force *)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Edit(./.env*)",
+      "Edit(./.claude/settings.json)"
+    ]
+  },
   "extraKnownMarketplaces": {
     "ita-plugins": {
       "source": { "source": "github", "repo": "ita315/rules-review-kit" }
