@@ -36,31 +36,70 @@ describe('FR-1 Open folder button', () => {
 });
 
 describe('tree summary line', () => {
-  it('shows file and image counts under the tree and updates after opening a folder', async () => {
+  async function pick(root: FakeDir) {
     const source = createFakeSource();
     const controller = createController(source);
-    source.queuePick(
-      'project',
-      dir({
-        'a.png': file(),
-        'c.txt': file(),
-        src: dir({ 'b.jpg': file(), 'd.md': file(), 'e.ts': file() }),
-      }),
-    );
-    const { container } = render(<App controller={controller} />);
+    source.queuePick('project', root);
+    const view = render(<App controller={controller} />);
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: TEXT.openFolder }));
-    await screen.findByText('a.png');
-    const summary = () => container.querySelector('.tree > .tree-summary');
-    expect(summary()?.textContent).toBe('2 files · 1 image');
-    expect(container.querySelector('.tree')?.lastElementChild).toBe(summary());
+    const summary = () => view.container.querySelector('.tree-summary');
+    return { ...view, user, summary };
+  }
 
-    const srcRow = [...container.querySelectorAll('.tree-row')].find(
-      (r) => r.querySelector('.tree-name')?.textContent === 'src',
-    );
-    await user.click(srcRow?.querySelector('button.tree-chevron') as HTMLElement);
+  /** The chevron of the tree row named `name`. getByText fails with a clear message when the row is missing. */
+  function chevronOf(name: string): HTMLElement {
+    const row = screen.getByText(name).closest('.tree-row');
+    const chevron = row?.querySelector<HTMLElement>('button.tree-chevron');
+    if (!chevron) throw new Error(`tree row "${name}" has no chevron button`);
+    return chevron;
+  }
+
+  const project = () =>
+    dir({
+      'a.png': file(),
+      'c.txt': file(),
+      src: dir({ 'b.jpg': file(), 'd.md': file(), 'e.ts': file() }),
+    });
+
+  it('counts only the visible files: opening a folder adds its files, collapsing it removes them', async () => {
+    const { user, summary } = await pick(project());
+    await screen.findByText('a.png');
+    expect(summary()?.textContent).toBe('2 files · 1 image');
+
+    await user.click(chevronOf('src'));
     await screen.findByText('e.ts');
     expect(summary()?.textContent).toBe('5 files · 2 images');
+
+    await user.click(chevronOf('src'));
+    await waitFor(() => expect(screen.queryByText('e.ts')).toBeNull());
+    expect(summary()?.textContent).toBe('2 files · 1 image');
+  });
+
+  it('is a footer of the tree pane, outside the scrolling tree', async () => {
+    const { container, summary } = await pick(project());
+    await screen.findByText('a.png');
+    const pane = container.querySelector('.tree-pane');
+    const tree = container.querySelector('.tree');
+    expect(tree?.parentElement).toBe(pane);
+    expect(tree?.contains(summary())).toBe(false);
+    expect(pane?.lastElementChild).toBe(summary());
+  });
+
+  it('is not shown while the root is loading', async () => {
+    const gate = deferred();
+    const { summary } = await pick(dir({ 'a.txt': file() }, { gate: gate.promise }));
+    await screen.findByText(TEXT.loading);
+    expect(summary()).toBeNull();
+    gate.resolve();
+    await screen.findByText('a.txt');
+    expect(summary()?.textContent).toBe('1 file · 0 images');
+  });
+
+  it('is not shown after reading the root failed', async () => {
+    const { summary } = await pick(dir({ 'a.txt': file() }, { failAfter: 0 }));
+    await screen.findByText(TEXT.unableToRead);
+    expect(summary()).toBeNull();
   });
 });
 

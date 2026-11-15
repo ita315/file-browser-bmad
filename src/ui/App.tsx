@@ -11,7 +11,9 @@ export function App({ controller }: { controller: Controller }) {
   const state = useAppState(controller);
   const topBar = useMemo(() => selectTopBar(state), [state]);
   const rows = useMemo(() => selectVisibleRows(state), [state]);
-  const summary = useMemo(() => selectSummary(state), [state]);
+  const { nodes, expanded } = state;
+  // Selection, details and preview changes keep these two references, so the count is not redone.
+  const summary = useMemo(() => selectSummary({ nodes, expanded }), [nodes, expanded]);
   const details = useMemo(() => selectDetails(state), [state]);
   const preview = useMemo(() => selectPreview(state), [state]);
 

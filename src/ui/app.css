@@ -118,24 +118,35 @@ body {
   color: var(--color-text);
 }
 
-/* tree */
-.tree {
+/* tree: the pane is a column; only .tree scrolls, the summary footer stays at the bottom */
+.tree-pane {
+  display: flex;
   flex: none;
+  flex-direction: column;
   box-sizing: border-box;
   width: var(--spacing-tree-width);
-  padding-block: var(--spacing-2);
-  overflow: hidden auto;
+  min-height: 0;
   border-right: var(--spacing-border-width) solid var(--color-border);
   background: var(--color-surface-tree);
 }
 
+.tree {
+  flex: 1;
+  min-height: 0;
+  padding-block: var(--spacing-2);
+  overflow: hidden auto;
+}
+
 .tree-summary {
+  flex: none;
   margin: 0;
   padding: var(--spacing-2);
+  border-top: var(--spacing-border-width) solid var(--color-border);
   color: var(--color-text-muted);
   font-family: var(--typography-small-font-family);
   font-size: var(--typography-small-font-size);
   font-weight: var(--typography-small-font-weight);
+  line-height: var(--typography-small-line-height);
 }
 
 .tree-row,

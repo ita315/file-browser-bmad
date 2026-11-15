@@ -14,11 +14,14 @@ export function Tree({
   onSelect: (id: NodeId) => void;
 }) {
   return (
-    <nav className="tree">
-      {rows.map((row) => (
-        <TreeRow key={row.type === 'item' ? row.id : row.key} row={row} onToggle={onToggle} onSelect={onSelect} />
-      ))}
+    // The pane holds the scrolling tree and, below it, the summary footer that never scrolls.
+    <div className="tree-pane">
+      <nav className="tree">
+        {rows.map((row) => (
+          <TreeRow key={row.type === 'item' ? row.id : row.key} row={row} onToggle={onToggle} onSelect={onSelect} />
+        ))}
+      </nav>
       {summary !== null && <p className="tree-summary">{summary}</p>}
-    </nav>
+    </div>
   );
 }
