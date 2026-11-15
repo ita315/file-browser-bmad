@@ -11,7 +11,12 @@ export function TopBar({ view, onOpenFolder }: { view: TopBarView; onOpenFolder:
   }
   return (
     <header className="top-bar">
-      <button type="button" className="button-primary" onClick={onOpenFolder}>
+      <button
+        type="button"
+        className="button-primary"
+        title={TEXT.openFolderTitle}
+        onClick={onOpenFolder}
+      >
         {TEXT.openFolder}
       </button>
       {view.rootName !== null && (

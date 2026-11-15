@@ -1,0 +1,10 @@
+{
+  "session_id": "sample-session",
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Write",
+  "tool_input": {
+    "file_path": "src/ui/Good.tsx",
+    "content": "(the hook reads the file from disk, not from here)"
+  },
+  "tool_response": { "success": true }
+}

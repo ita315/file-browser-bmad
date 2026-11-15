@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { reduce } from './reducer.ts';
-import { selectDetails, selectPreview, selectTopBar, selectVisibleRows } from './selectors.ts';
+import { selectDetails, selectPreview, selectSummary, selectTopBar, selectVisibleRows } from './selectors.ts';
 import type { Entry, SourceRef } from './source.ts';
-import { formatDate } from './format.ts';
 import { createInitialState, statusKey } from './state.ts';
 import type { AppState } from './state.ts';
 import { TEXT } from './text.ts';
@@ -23,6 +22,62 @@ describe('FR-6 before a root is picked', () => {
 
   it('shows the empty details prompt', () => {
     expect(selectDetails(state)).toEqual({ type: 'empty' });
+  });
+});
+
+describe('selectSummary', () => {
+  const root = reduce(reduce(createInitialState(true), { type: 'rootPicked', gen: 1, entry: entry('root', 'directory') }), {
+    type: 'loadStarted',
+    gen: 1,
+    id: '',
+  });
+  const withRoot = reduce(root, {
+    type: 'loadSucceeded',
+    gen: 1,
+    id: '',
+    entries: [entry('a.png'), entry('c.txt'), entry('src', 'directory')],
+  });
+  const opened = reduce(reduce(withRoot, { type: 'toggled', id: 'src' }), { type: 'loadStarted', gen: 1, id: 'src' });
+  const loaded = reduce(opened, {
+    type: 'loadSucceeded',
+    gen: 1,
+    id: 'src',
+    entries: [entry('b.JPG'), entry('d.md'), entry('e.ts')],
+  });
+
+  it('counts the root files only, skipping folders', () => {
+    expect(selectSummary(withRoot)).toBe('2 files · 1 image');
+  });
+
+  it('counts an open folder: 5 files, 2 of them images', () => {
+    expect(selectSummary(loaded)).toBe('5 files · 2 images');
+  });
+
+  it('stops counting a folder once it is collapsed, and counts it again when reopened', () => {
+    const collapsed = reduce(loaded, { type: 'toggled', id: 'src' });
+    expect(selectSummary(collapsed)).toBe('2 files · 1 image');
+    expect(selectSummary(reduce(collapsed, { type: 'toggled', id: 'src' }))).toBe('5 files · 2 images');
+  });
+
+  it('does not change while an open folder is still loading', () => {
+    expect(selectSummary(opened)).toBe('2 files · 1 image');
+  });
+
+  it('uses singular forms', () => {
+    const one = reduce(root, { type: 'loadSucceeded', gen: 1, id: '', entries: [entry('a.png')] });
+    expect(selectSummary(one)).toBe('1 file · 1 image');
+  });
+
+  it('is null before a root is picked', () => {
+    expect(selectSummary(createInitialState(true))).toBeNull();
+  });
+
+  it('is null while the root is loading', () => {
+    expect(selectSummary(root)).toBeNull();
+  });
+
+  it('is null after reading the root failed', () => {
+    expect(selectSummary(reduce(root, { type: 'loadFailed', gen: 1, id: '' }))).toBeNull();
   });
 });
 
@@ -303,7 +358,7 @@ describe('FR-6 FR-7 FR-8 selectDetails', () => {
       name: 'report.pdf',
       typeLabel: 'PDF',
       size: '1.5 KB',
-      modified: formatDate(ms),
+      modified: 'Oct 22, 2026, 3:20 PM',
     });
     expect(selectDetails(ready(null))).toMatchObject({ modified: TEXT.unknownValue });
   });

@@ -35,6 +35,74 @@ describe('FR-1 Open folder button', () => {
   });
 });
 
+describe('tree summary line', () => {
+  async function pick(root: FakeDir) {
+    const source = createFakeSource();
+    const controller = createController(source);
+    source.queuePick('project', root);
+    const view = render(<App controller={controller} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: TEXT.openFolder }));
+    const summary = () => view.container.querySelector('.tree-summary');
+    return { ...view, user, summary };
+  }
+
+  /** The chevron of the tree row named `name`. getByText fails with a clear message when the row is missing. */
+  function chevronOf(name: string): HTMLElement {
+    const row = screen.getByText(name).closest('.tree-row');
+    const chevron = row?.querySelector<HTMLElement>('button.tree-chevron');
+    if (!chevron) throw new Error(`tree row "${name}" has no chevron button`);
+    return chevron;
+  }
+
+  const project = () =>
+    dir({
+      'a.png': file(),
+      'c.txt': file(),
+      src: dir({ 'b.jpg': file(), 'd.md': file(), 'e.ts': file() }),
+    });
+
+  it('counts only the visible files: opening a folder adds its files, collapsing it removes them', async () => {
+    const { user, summary } = await pick(project());
+    await screen.findByText('a.png');
+    expect(summary()?.textContent).toBe('2 files · 1 image');
+
+    await user.click(chevronOf('src'));
+    await screen.findByText('e.ts');
+    expect(summary()?.textContent).toBe('5 files · 2 images');
+
+    await user.click(chevronOf('src'));
+    await waitFor(() => expect(screen.queryByText('e.ts')).toBeNull());
+    expect(summary()?.textContent).toBe('2 files · 1 image');
+  });
+
+  it('is a footer of the tree pane, outside the scrolling tree', async () => {
+    const { container, summary } = await pick(project());
+    await screen.findByText('a.png');
+    const pane = container.querySelector('.tree-pane');
+    const tree = container.querySelector('.tree');
+    expect(tree?.parentElement).toBe(pane);
+    expect(tree?.contains(summary())).toBe(false);
+    expect(pane?.lastElementChild).toBe(summary());
+  });
+
+  it('is not shown while the root is loading', async () => {
+    const gate = deferred();
+    const { summary } = await pick(dir({ 'a.txt': file() }, { gate: gate.promise }));
+    await screen.findByText(TEXT.loading);
+    expect(summary()).toBeNull();
+    gate.resolve();
+    await screen.findByText('a.txt');
+    expect(summary()?.textContent).toBe('1 file · 0 images');
+  });
+
+  it('is not shown after reading the root failed', async () => {
+    const { summary } = await pick(dir({ 'a.txt': file() }, { failAfter: 0 }));
+    await screen.findByText(TEXT.unableToRead);
+    expect(summary()).toBeNull();
+  });
+});
+
 describe('FR-2 unsupported browser', () => {
   it('shows only the message and no button', () => {
     render(<App controller={createController(createFakeSource({ supported: false }))} />);
@@ -478,7 +546,7 @@ describe('image preview pane', () => {
 
     decodes[1].gate.resolve();
     await waitFor(() => expect(shownSrc(container)).toEqual(['blob:test/2']));
-    expect(revoked).toEqual(['blob:test/1']);
+    await waitFor(() => expect(revoked).toEqual(['blob:test/1']));
   });
 
   it('shows Unable to display this file when decode() fails, and frees its URL', async () => {
@@ -489,7 +557,7 @@ describe('image preview pane', () => {
     decodes[0].gate.reject(new Error('EncodingError'));
     await screen.findByText(TEXT.unableToDisplay);
     expect(shownSrc(container)).toEqual([]);
-    expect(revoked).toEqual(['blob:test/1']);
+    await waitFor(() => expect(revoked).toEqual(['blob:test/1']));
   });
 
   it('message → image: the message stays until the next image is decoded', async () => {
@@ -543,7 +611,7 @@ describe('image preview pane', () => {
     await clickName('b.png');
     await screen.findByText(TEXT.unableToDisplay);
     expect(shownSrc(container)).toEqual([]);
-    expect(revoked).toEqual(['blob:test/1']);
+    await waitFor(() => expect(revoked).toEqual(['blob:test/1']));
 
     await clickName('c.png');
     gateC.resolve();
@@ -581,7 +649,7 @@ describe('image preview pane', () => {
     expect(pane(container)?.textContent).toBe('');
     decodes[2].gate.resolve();
     await waitFor(() => expect(shownSrc(container)).toEqual(['blob:test/3']));
-    expect(revoked).toEqual(['blob:test/2', 'blob:test/1']);
+    await waitFor(() => expect(revoked).toEqual(['blob:test/2', 'blob:test/1']));
   });
 
   it('a decode still pending when the column goes away frees its URL when it ends', async () => {
@@ -617,7 +685,7 @@ describe('image preview pane', () => {
     await screen.findByText(TEXT.unableToRead);
     expect(pane(container)).toBeNull();
     expect(withPreview(container)).toBe(false);
-    expect(revoked).toEqual(['blob:test/1']);
+    await waitFor(() => expect(revoked).toEqual(['blob:test/1']));
   });
 
   it('A then B with A arriving last: shows only B', async () => {
@@ -643,12 +711,12 @@ describe('image preview pane', () => {
 
     await clickName('b.gif');
     await waitFor(() => expect(pane(container)?.querySelector('img')?.getAttribute('src')).toBe('blob:test/2'));
-    expect(revoked).toEqual(['blob:test/1']);
+    await waitFor(() => expect(revoked).toEqual(['blob:test/1']));
 
     await clickName('src');
     expect(pane(container)).toBeNull();
     expect(withPreview(container)).toBe(false);
-    expect(revoked).toEqual(['blob:test/1', 'blob:test/2']);
+    await waitFor(() => expect(revoked).toEqual(['blob:test/1', 'blob:test/2']));
   });
 
   it('removes the column and drops late content when a new root is picked', async () => {

@@ -2,6 +2,7 @@
 
 export const TEXT = {
   openFolder: 'Open folder…',
+  openFolderTitle: 'Choose a folder from your computer',
   unsupportedBrowser: 'This browser is not supported. Please use Chrome on desktop.',
   selectFilePrompt: 'Select a file to see its details',
   loading: 'Loading…',
@@ -14,4 +15,9 @@ export const TEXT = {
   labelModified: 'Modified',
   typeFolder: 'Folder',
   unknownValue: '—',
+  summaryFileOne: 'file',
+  summaryFileMany: 'files',
+  summaryImageOne: 'image',
+  summaryImageMany: 'images',
+  summarySeparator: ' · ',
 } as const;

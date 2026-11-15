@@ -1,4 +1,42 @@
 {
+  "statusLine": {
+    "type": "command",
+    "command": ".claude/statusline.sh"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npm test)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(grep *)",
+      "Bash(head *)",
+      "Bash(tail *)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(git commit *)",
+      "Bash(gh pr *)",
+      "Bash(npm install *)",
+      "Bash(rm *)",
+      "Bash(mv *)",
+      "Edit(./CLAUDE.md)",
+      "Edit(./_bmad-output/**)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(npm publish *)",
+      "Bash(git push --force *)",
+      "Bash(claude)",
+      "Bash(claude *)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(~/.claude/**)",
+      "Edit(./.env*)",
+      "Edit(./.claude/settings.json)"
+    ]
+  },
   "extraKnownMarketplaces": {
     "ita-plugins": {
       "source": { "source": "github", "repo": "ita315/rules-review-kit" }
@@ -6,5 +44,64 @@
   },
   "enabledPlugins": {
     "file-viewer@ita-plugins": true
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-bash.sh" },
+          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/bash-write-check.mjs", "timeout": 15 }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-writes.mjs" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/bash-write-check.mjs", "timeout": 15 }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-edit-check.mjs", "timeout": 15 }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/audit-log.mjs", "timeout": 10 }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/audit-log.mjs", "timeout": 10 }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/audit-log.mjs", "timeout": 10 }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/stop-gate.mjs", "timeout": 300 }
+        ]
+      }
+    ]
   }
 }

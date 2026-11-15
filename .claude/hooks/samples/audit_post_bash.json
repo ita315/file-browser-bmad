@@ -1,0 +1,10 @@
+{
+  "session_id": "sample-session",
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "npm run check",
+    "description": "Run the project checks"
+  },
+  "tool_response": { "stdout": "ok", "stderr": "" }
+}

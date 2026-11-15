@@ -10,12 +10,10 @@ const sortNames = (items: Array<[string, EntryKind]>) =>
 
 describe('FR-4 compareEntries', () => {
   it('puts folders before files, including hidden folders', () => {
-    expect(sortNames([['b', 'file'], ['.git', 'directory'], ['a', 'file'], ['src', 'directory']])).toEqual([
-      '.git',
-      'src',
-      'a',
-      'b',
-    ]);
+    expect(
+      sortNames([['b', 'file'], ['.git', 'directory'], ['a', 'file'], ['src', 'directory']]),
+      'AD-7: folders must come before files (see compareEntries in src/lib/sort.ts)',
+    ).toEqual(['.git', 'src', 'a', 'b']);
   });
 
   it('sorts case-insensitively', () => {

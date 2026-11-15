@@ -93,6 +93,44 @@ export function selectVisibleRows(state: AppState): Row[] {
   return rows;
 }
 
+/** Only what the summary reads, so the UI can memoize on these two and skip selection changes. */
+export type SummaryInput = Pick<AppState, 'nodes' | 'expanded'>;
+
+type FileCounts = { files: number; images: number };
+
+/**
+ * Counts the files shown in the tree under `node`, and how many are images by extension.
+ * Follows the same rule as pushNode: children count only under an expanded folder that did not fail.
+ */
+function countVisibleFiles(input: SummaryInput, node: TreeNode, counts: FileCounts): void {
+  if (node.kind === 'file') {
+    counts.files += 1;
+    if (previewOf(node.name)?.kind === 'image') counts.images += 1;
+    return;
+  }
+  if (node.load === 'failed' || !input.expanded.has(node.id)) return;
+  for (const id of node.children) {
+    const child = input.nodes.get(id);
+    if (child) countVisibleFiles(input, child, counts);
+  }
+}
+
+/**
+ * "12 files · 3 images" for the files visible in the tree now: a collapsed folder's files are not counted.
+ * null before a root is picked, while the root loads, and when reading the root failed.
+ */
+export function selectSummary(input: SummaryInput): string | null {
+  const root = input.nodes.get(ROOT_ID);
+  if (root?.load !== 'loaded') return null;
+  const counts: FileCounts = { files: 0, images: 0 };
+  countVisibleFiles(input, root, counts);
+  const { files, images } = counts;
+  return [
+    `${files} ${files === 1 ? TEXT.summaryFileOne : TEXT.summaryFileMany}`,
+    `${images} ${images === 1 ? TEXT.summaryImageOne : TEXT.summaryImageMany}`,
+  ].join(TEXT.summarySeparator);
+}
+
 export function selectDetails(state: AppState): DetailsView {
   const { details } = state;
   if (details.kind !== 'none') {
@@ -104,7 +142,7 @@ export function selectDetails(state: AppState): DetailsView {
       name: node.name,
       typeLabel: formatType(node.name),
       size: formatSize(details.size),
-      // Local time zone in the app; tests compare against formatDate itself.
+      // Local time zone in the app; tests run with TZ=UTC (vite.config.ts).
       modified: formatDate(details.lastModified),
     };
   }
