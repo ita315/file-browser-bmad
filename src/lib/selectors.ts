@@ -4,7 +4,7 @@ import { previewOf } from './fileKinds.ts';
 import { formatDate, formatSize, formatType } from './format.ts';
 import { ROOT_ID, statusKey } from './state.ts';
 import type { AppState, NodeId, SettledPreview, TreeNode } from './state.ts';
-import { TEXT } from './text.ts';
+import { LARGE_FILE_BYTES, TEXT } from './text.ts';
 
 export type TopBarView =
   | { mode: 'unsupported'; text: string }
@@ -30,7 +30,7 @@ export type Row = ItemRow | StatusRow;
 export type DetailsView =
   | { type: 'empty' }
   | { type: 'loading'; name: string }
-  | { type: 'file'; name: string; typeLabel: string; size: string; modified: string }
+  | { type: 'file'; name: string; typeLabel: string; size: string; modified: string; large?: true }
   | { type: 'folder'; name: string };
 
 /**
@@ -144,6 +144,7 @@ export function selectDetails(state: AppState): DetailsView {
       size: formatSize(details.size),
       // Local time zone in the app; tests run with TZ=UTC (vite.config.ts).
       modified: formatDate(details.lastModified),
+      ...(details.size >= LARGE_FILE_BYTES ? { large: true as const } : {}),
     };
   }
   const selected = state.selectedId === null ? undefined : state.nodes.get(state.selectedId);
