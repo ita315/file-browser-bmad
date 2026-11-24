@@ -44,7 +44,9 @@ export function DetailsPanel({ view }: { view: DetailsView }) {
           <dl className="details-list">
             <NameRow name={view.name} />
             <DetailsRow label={TEXT.labelType}>{view.typeLabel}</DetailsRow>
-            <DetailsRow label={TEXT.labelSize}>{view.size}</DetailsRow>
+            <DetailsRow label={TEXT.labelSize}>{view.size}
+              {view.large && <span className="details-badge">{TEXT.largeBadge}</span>}
+            </DetailsRow>
             <DetailsRow label={TEXT.labelModified}>{view.modified}</DetailsRow>
           </dl>
         </section>

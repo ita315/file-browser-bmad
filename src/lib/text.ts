@@ -20,4 +20,8 @@ export const TEXT = {
   summaryImageOne: 'image',
   summaryImageMany: 'images',
   summarySeparator: ' · ',
+  largeBadge: 'Large',
 } as const;
+
+/** A file of at least this many bytes gets the Large badge in the details panel. */
+export const LARGE_FILE_BYTES = 10_000_000;

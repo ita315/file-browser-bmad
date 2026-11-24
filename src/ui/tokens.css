@@ -11,6 +11,8 @@
   --color-accent: #3B6EA8;
   --color-accent-foreground: #FFFFFF;
   --color-selected: #D7E3F1;
+  --color-badge-large: #F5A623;
+  --color-badge-large-foreground: #3D2600;
 
   --typography-body-font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   --typography-body-font-size: 13px;
@@ -35,6 +37,7 @@
 
   --rounded-sm: 4px;
   --rounded-md: 8px;
+  --rounded-full: 9999px;
 
   --spacing-1: 4px;
   --spacing-2: 8px;
